@@ -1015,4 +1015,62 @@
   <child link="arm_c_1_1_1"/>
 </joint>
 
+<!-- ros2_control interfaces for 12 actuated joints -->
+<ros2_control name="SpiderHW" type="system">
+  <hardware>
+    <!-- Gazebo (GZ/Ignition) ros2_control backend -->
+    <plugin>gz_ros2_control/GazeboSimSystem</plugin>
+  </hardware>
+
+  <!-- One block per actuated joint (position command interface) -->
+  <joint name="Revolute 77">
+    <command_interface name="position"/>
+    <state_interface name="position"/>
+    <state_interface name="velocity"/>
+  </joint>
+  <joint name="Revolute 78"><command_interface name="position"/><state_interface name="position"/><state_interface name="velocity"/></joint>
+  <joint name="Revolute 79"><command_interface name="position"/><state_interface name="position"/><state_interface name="velocity"/></joint>
+  <joint name="Revolute 80"><command_interface name="position"/><state_interface name="position"/><state_interface name="velocity"/></joint>
+  <joint name="Revolute 90"><command_interface name="position"/><state_interface name="position"/><state_interface name="velocity"/></joint>
+  <joint name="Revolute 91"><command_interface name="position"/><state_interface name="position"/><state_interface name="velocity"/></joint>
+  <joint name="Revolute 92"><command_interface name="position"/><state_interface name="position"/><state_interface name="velocity"/></joint>
+  <joint name="Revolute 93"><command_interface name="position"/><state_interface name="position"/><state_interface name="velocity"/></joint>
+  <joint name="Revolute 102"><command_interface name="position"/><state_interface name="position"/><state_interface name="velocity"/></joint>
+  <joint name="Revolute 103"><command_interface name="position"/><state_interface name="position"/><state_interface name="velocity"/></joint>
+  <joint name="Revolute 104"><command_interface name="position"/><state_interface name="position"/><state_interface name="velocity"/></joint>
+  <joint name="Revolute 105"><command_interface name="position"/><state_interface name="position"/><state_interface name="velocity"/></joint>
+</ros2_control>
+
+<!-- Load the Gazebo (GZ) ros2_control system plugin -->
+<!-- <gazebo>
+  <plugin name="gz_ros2_control" filename="gz_ros2_control-system"/>
+</gazebo>
+
+<gazebo>
+  <plugin
+    filename="gz_ros2_control-system"
+    name="gz_ros2_control::GazeboSimROS2ControlPlugin"/>
+</gazebo> -->
+<!-- <gazebo>
+  <plugin filename="gz_ros2_control-system"
+          name="gz_ros2_control::GazeboSimROS2ControlPlugin"/>
+</gazebo> -->
+
+<!-- <gazebo>
+  <plugin filename="libgz_ros2_control-system.so"
+          name="gz_ros2_control::GazeboSimROS2ControlPlugin"/>
+</gazebo> -->
+
+<gazebo>
+  <plugin filename="libgz_ros2_control-system.so"
+          name="gz_ros2_control::GazeboSimROS2ControlPlugin">
+    <parameters>/home/teja/spiderbot_ws/install/spiderbot_description/share/spiderbot_description/config/controllers.yaml</parameters>
+    <!-- optional but fine to keep default -->
+    <controller_manager_name>controller_manager</controller_manager_name>
+  </plugin>
+</gazebo>
+
+
+
+
 </robot>
