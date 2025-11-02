@@ -18,15 +18,15 @@ position_controller:
     use_sim_time: true  # ← ADD THIS
     interface_name: position
     joints:
-      - "Revolute 77"
-      - "Revolute 78"
-      - "Revolute 79"
-      - "Revolute 80"
-      - "Revolute 90"
-      - "Revolute 91"
-      - "Revolute 92"
-      - "Revolute 93"
-      - "Revolute 102"
-      - "Revolute 103"
-      - "Revolute 104"
-      - "Revolute 105"
+      - "Revolute 80"   # FL hip
+      - "Revolute 91"   # FL thigh
+      - "Revolute 105"  # FL knee
+      - "Revolute 79"   # FR hip
+      - "Revolute 92"   # FR thigh
+      - "Revolute 102"  # FR knee
+      - "Revolute 78"   # RR hip
+      - "Revolute 93"   # RR thigh
+      - "Revolute 103"  # RR knee
+      - "Revolute 77"   # RL hip
+      - "Revolute 90"   # RL thigh
+      - "Revolute 104"  # RL knee

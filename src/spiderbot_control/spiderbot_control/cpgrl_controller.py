@@ -31,12 +31,24 @@ try:
 except Exception:
     _AMENT_OK = False
 
-
-JOINT_ORDER: List[str] = [
-    "Revolute 77","Revolute 78","Revolute 79","Revolute 80",
-    "Revolute 90","Revolute 91","Revolute 92","Revolute 93",
-    "Revolute 102","Revolute 103","Revolute 104","Revolute 105",
+# --- constants (top of file) ---
+JOINT_ORDER = [
+    "Revolute 80",  # FL hip
+    "Revolute 91",  # FL thigh
+    "Revolute 105", # FL calf
+    "Revolute 79",  # FR hip
+    "Revolute 92",  # FR thigh
+    "Revolute 102", # FR calf
+    "Revolute 78",  # RR hip
+    "Revolute 93",  # RR thigh
+    "Revolute 103", # RR calf
+    "Revolute 77",  # RL hip
+    "Revolute 90",  # RL thigh
+    "Revolute 104", # RL calf
 ]
+DEFAULT_Q = [0.6, 0.5, -0.2,  -0.6, 0.5, -0.2,  0.6, 0.5, -0.2,  -0.6, 0.5, -0.2]
+
+
 NUM_ACTIONS = 17
 NUM_JOINTS  = 12
 OBS_DIM     = 53
@@ -85,9 +97,9 @@ class CpgrlController(Node):
         self.declare_parameter('odom_twist_is_body', True)
 
         # Default joint positions used during training (usually zeros).
-        self.declare_parameter('default_joint_rad', [0.0]*NUM_JOINTS)
+        self.declare_parameter('default_joint_rad', DEFAULT_Q)
         # inside CpgrlController.__init__ (after other declares)
-        self.declare_parameter('default_q', [0.6,-0.6,0.6,-0.6,0.5,0.5,0.5,0.5,-0.2,-0.2,-0.2,-0.2])
+        self.declare_parameter('default_q', DEFAULT_Q)
         self.default_q = np.array(self.get_parameter('default_q').value, dtype=np.float32)
         if self.default_q.shape[0] != 12:
             self.get_logger().warn("default_q must have 12 values; falling back to zeros.")
