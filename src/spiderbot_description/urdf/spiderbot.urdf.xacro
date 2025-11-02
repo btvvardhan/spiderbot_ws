@@ -5,6 +5,7 @@
 <xacro:include filename="$(find spiderbot_description)/urdf/spiderbot.trans" />
 <xacro:include filename="$(find spiderbot_description)/urdf/spiderbot.gazebo" />
 
+
 <link name="base_link">
   <inertial>
     <origin xyz="1.9417529379176808e-16 -1.4808669204998277e-07 -0.010568387343170359" rpy="0 0 0"/>
@@ -1041,13 +1042,11 @@
 <gazebo>
   <plugin filename="libgz_ros2_control-system"
           name="gz_ros2_control::GazeboSimROS2ControlPlugin">
-    <parameters>/home/teja/spiderbot_ws/install/spiderbot_description/share/spiderbot_description/config/controllers.yaml</parameters>
+    <parameters>$(find spiderbot_description)/config/controllers.yaml</parameters>
     <robot_param>robot_description</robot_param>
     <robot_param_node>robot_state_publisher</robot_param_node>
-    <!-- optional but fine to keep default -->
     <controller_manager_name>controller_manager</controller_manager_name>
   </plugin>
 </gazebo>
-
 
 </robot>
