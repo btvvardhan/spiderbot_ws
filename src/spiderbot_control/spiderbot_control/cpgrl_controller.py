@@ -86,6 +86,15 @@ class CpgrlController(Node):
 
         # Default joint positions used during training (usually zeros).
         self.declare_parameter('default_joint_rad', [0.0]*NUM_JOINTS)
+        # inside CpgrlController.__init__ (after other declares)
+        self.declare_parameter('default_q', [0.6,-0.6,0.6,-0.6,0.5,0.5,0.5,0.5,-0.2,-0.2,-0.2,-0.2])
+        self.default_q = np.array(self.get_parameter('default_q').value, dtype=np.float32)
+        if self.default_q.shape[0] != 12:
+            self.get_logger().warn("default_q must have 12 values; falling back to zeros.")
+            self.default_q = np.zeros(12, dtype=np.float32)
+
+
+
 
         # Safe default for sim clocks (but don't redeclare if launch passes it)
         try:
@@ -335,12 +344,6 @@ class CpgrlController(Node):
         obs = self._build_observation()
         actions17 = self._policy_actions(obs)
 
-###########
-
-
-
-
-
         # Convert 17-D actions -> 12 joint angles with your CPG
         try:
             angles12 = cpg.actions_to_angles(actions17, t, self._state)
@@ -350,7 +353,7 @@ class CpgrlController(Node):
 
 
         # Publish ABSOLUTE targets: default pose + deltas (exactly like training)
-        targets12 = DEFAULT_Q + np.asarray(angles12, dtype=np.float32)
+        targets12 = self.default_q + np.asarray(angles12, dtype=np.float32)
 
         # Safety clamp
         targets12 = np.clip(targets12, -self.max_joint, self.max_joint)
