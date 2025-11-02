@@ -26,6 +26,7 @@ setup(
         'console_scripts': [
             # lets you do: ros2 run spiderbot_control cpgrl_controller
             'cpgrl_controller = spiderbot_control.cpgrl_controller:main',
+            'teleop_keyboard = spiderbot_control.teleop_keyboard:main',
         ],
     },
 )
