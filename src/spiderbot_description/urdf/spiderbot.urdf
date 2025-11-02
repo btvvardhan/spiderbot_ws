@@ -1062,7 +1062,7 @@
 </gazebo> -->
 
 <gazebo>
-  <plugin filename="libgz_ros2_control-system.so"
+  <plugin filename="libgz_ros2_control-system"
           name="gz_ros2_control::GazeboSimROS2ControlPlugin">
     <parameters>/home/teja/spiderbot_ws/install/spiderbot_description/share/spiderbot_description/config/controllers.yaml</parameters>
     <!-- optional but fine to keep default -->
