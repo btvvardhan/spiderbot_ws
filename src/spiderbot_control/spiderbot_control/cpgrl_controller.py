@@ -83,6 +83,15 @@ class CpgrlController(Node):
         super().__init__('cpgrl_controller')
 
         # ---------------- Parameters ----------------
+        # mapping from CPG-order -> controller-order (indices 0..11)
+        self.declare_parameter('perm', list(range(12)))
+        self.declare_parameter('signs', [1.0]*12)
+
+        perm_param = self.get_parameter('perm').get_parameter_value().integer_array_value
+        signs_param = self.get_parameter('signs').get_parameter_value().double_array_value
+        self.perm = np.array(list(perm_param) if perm_param else list(range(12)), dtype=np.int64)
+        self.signs = np.array(list(signs_param) if signs_param else [1.0]*12, dtype=np.float32)
+
         self.declare_parameter('use_model', False)
         self.declare_parameter('model_path', '')
         self.declare_parameter('rate_hz', 100.0)
@@ -371,8 +380,10 @@ class CpgrlController(Node):
         except Exception as e:
             self.get_logger().error(f'CPG conversion failed: {e}. Sending zeros.')
             angles12 = np.zeros(NUM_JOINTS, dtype=np.float32)
+        angles12 = np.asarray(angles12, dtype=np.float32)
+        angles12_mapped = (angles12[self.perm]) * self.signs
 
-        targets12 = self.default_q + np.asarray(angles12, dtype=np.float32)
+        targets12 = self.default_q + angles12_mapped
         targets12 = np.clip(targets12, -self.max_joint, self.max_joint)
         self.pub_cmd.publish(Float64MultiArray(data=[float(v) for v in targets12]))
         self._prev_actions[:] = actions17.astype(np.float32)

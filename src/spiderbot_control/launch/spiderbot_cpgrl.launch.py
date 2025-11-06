@@ -39,6 +39,9 @@ def generate_launch_description():
                     "Revolute 90","Revolute 91","Revolute 92","Revolute 93",
                     "Revolute 102","Revolute 103","Revolute 104","Revolute 105",
                 ],
+
+                'perm':  [0,1,2, 3,4,5, 9,10,11, 6,7,8],
+                'signs': [1.0,1.0,1.0, 1.0,1.0,1.0, 1.0,1.0,1.0, 1.0,1.0,1.0],
             }],
         ),
     ])
