@@ -1,32 +1,82 @@
 controller_manager:
   ros__parameters:
-    use_sim_time: true  # ← Must be true
-    update_rate: 100    # ← Lower this from 1000 to 100 (more stable)
+    update_rate: 100  # Hz
 
+    # Joint State Broadcaster - publishes joint states to /joint_states
     joint_state_broadcaster:
       type: joint_state_broadcaster/JointStateBroadcaster
 
+    # Position controller for all joints
     position_controller:
       type: forward_command_controller/ForwardCommandController
 
+    # Trajectory controller (alternative to position controller)
+    joint_trajectory_controller:
+      type: joint_trajectory_controller/JointTrajectoryController
+
+# Joint State Broadcaster Configuration
 joint_state_broadcaster:
   ros__parameters:
-    use_sim_time: true  # ← ADD THIS
+    joints:
+      - fl_coxa_joint
+      - fl_femur_joint
+      - fl_tibia_joint
+      - fr_coxa_joint
+      - fr_femur_joint
+      - fr_tibia_joint
+      - rl_coxa_joint
+      - rl_femur_joint
+      - rl_tibia_joint
+      - rr_coxa_joint
+      - rr_femur_joint
+      - rr_tibia_joint
 
+# Position Controller Configuration (for direct position commands)
 position_controller:
   ros__parameters:
-    use_sim_time: true  # ← ADD THIS
-    interface_name: position
     joints:
-      - "Revolute 80"   # FL hip
-      - "Revolute 91"   # FL thigh
-      - "Revolute 105"  # FL knee
-      - "Revolute 79"   # FR hip
-      - "Revolute 92"   # FR thigh
-      - "Revolute 102"  # FR knee
-      - "Revolute 78"   # RR hip
-      - "Revolute 93"   # RR thigh
-      - "Revolute 103"  # RR knee
-      - "Revolute 77"   # RL hip
-      - "Revolute 90"   # RL thigh
-      - "Revolute 104"  # RL knee
+      - fl_coxa_joint
+      - fl_femur_joint
+      - fl_tibia_joint
+      - fr_coxa_joint
+      - fr_femur_joint
+      - fr_tibia_joint
+      - rl_coxa_joint
+      - rl_femur_joint
+      - rl_tibia_joint
+      - rr_coxa_joint
+      - rr_femur_joint
+      - rr_tibia_joint
+    interface_name: position
+
+# Joint Trajectory Controller Configuration (for smooth trajectories)
+joint_trajectory_controller:
+  ros__parameters:
+    joints:
+      - fl_coxa_joint
+      - fl_femur_joint
+      - fl_tibia_joint
+      - fr_coxa_joint
+      - fr_femur_joint
+      - fr_tibia_joint
+      - rl_coxa_joint
+      - rl_femur_joint
+      - rl_tibia_joint
+      - rr_coxa_joint
+      - rr_femur_joint
+      - rr_tibia_joint
+
+    command_interfaces:
+      - position
+
+    state_interfaces:
+      - position
+      - velocity
+
+    state_publish_rate: 100.0
+    action_monitor_rate: 20.0
+
+    allow_partial_joints_goal: false
+    constraints:
+      stopped_velocity_tolerance: 0.01
+      goal_time: 0.0
