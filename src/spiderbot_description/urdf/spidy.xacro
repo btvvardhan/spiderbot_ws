@@ -1,5 +1,13 @@
 <?xml version="1.0" ?>
-<robot name="spider_bot" xmlns:xacro="http://www.ros.org/wiki/xacro">
+<robot name="spiderbot" xmlns:xacro="http://www.ros.org/wiki/xacro">
+  <!-- Added by ChatGPT: leg color materials -->
+  <material name="front_green">
+    <color rgba="0.1 0.8 0.1 1.0"/>
+  </material>
+  <material name="rear_red">
+    <color rgba="0.9 0.1 0.1 1.0"/>
+  </material>
+
 
 <!-- ============================================ -->
 <!-- MATERIALS -->
@@ -24,14 +32,14 @@
   <visual>
     <origin xyz="0 0 0" rpy="0 0 0"/>
     <geometry>
-      <mesh filename="package://spider_bot_description/meshes/base_link.stl" scale="0.001 0.001 0.001"/>
+      <mesh filename="package://spiderbot_description/meshes/base_link.stl" scale="0.001 0.001 0.001"/>
     </geometry>
     <material name="silver"/>
   </visual>
   <collision>
     <origin xyz="0 0 0" rpy="0 0 0"/>
     <geometry>
-      <mesh filename="package://spider_bot_description/meshes/base_link.stl" scale="0.001 0.001 0.001"/>
+      <mesh filename="package://spiderbot_description/meshes/base_link.stl" scale="0.001 0.001 0.001"/>
     </geometry>
   </collision>
 </link>
@@ -48,14 +56,14 @@
   <visual>
     <origin xyz="-0.0802 0.1049 0.0717" rpy="0 0 0"/>
     <geometry>
-      <mesh filename="package://spider_bot_description/meshes/coxa_FL_1.stl" scale="0.001 0.001 0.001"/>
+      <mesh filename="package://spiderbot_description/meshes/coxa_FL_1.stl" scale="0.001 0.001 0.001"/>
     </geometry>
-    <material name="silver"/>
+    <material name="front_green"/>
   </visual>
   <collision>
     <origin xyz="-0.0802 0.1049 0.0717" rpy="0 0 0"/>
     <geometry>
-      <mesh filename="package://spider_bot_description/meshes/coxa_FL_1.stl" scale="0.001 0.001 0.001"/>
+      <mesh filename="package://spiderbot_description/meshes/coxa_FL_1.stl" scale="0.001 0.001 0.001"/>
     </geometry>
   </collision>
 </link>
@@ -69,14 +77,14 @@
   <visual>
     <origin xyz="-0.135496 0.120881 0.0888" rpy="0 0 0"/>
     <geometry>
-      <mesh filename="package://spider_bot_description/meshes/femur_FL_1.stl" scale="0.001 0.001 0.001"/>
+      <mesh filename="package://spiderbot_description/meshes/femur_FL_1.stl" scale="0.001 0.001 0.001"/>
     </geometry>
-    <material name="silver"/>
+    <material name="front_green"/>
   </visual>
   <collision>
     <origin xyz="-0.135496 0.120881 0.0888" rpy="0 0 0"/>
     <geometry>
-      <mesh filename="package://spider_bot_description/meshes/femur_FL_1.stl" scale="0.001 0.001 0.001"/>
+      <mesh filename="package://spiderbot_description/meshes/femur_FL_1.stl" scale="0.001 0.001 0.001"/>
     </geometry>
   </collision>
 </link>
@@ -90,32 +98,14 @@
   <visual>
     <origin xyz="-0.192064 0.177449 0.0888" rpy="0 0 0"/>
     <geometry>
-      <mesh filename="package://spider_bot_description/meshes/tibia_FL_1.stl" scale="0.001 0.001 0.001"/>
+      <mesh filename="package://spiderbot_description/meshes/tibia_FL_1.stl" scale="0.001 0.001 0.001"/>
     </geometry>
-    <material name="silver"/>
+    <material name="front_green"/>
   </visual>
   <collision>
     <origin xyz="-0.192064 0.177449 0.0888" rpy="0 0 0"/>
     <geometry>
-      <mesh filename="package://spider_bot_description/meshes/tibia_FL_1.stl" scale="0.001 0.001 0.001"/>
-    </geometry>
-  </collision>
-</link>
-
-<link name="fl_foot_link">
-  <inertial>
-    <mass value="0.01"/>
-    <inertia ixx="0.00001" iyy="0.00001" izz="0.00001" ixy="0.0" iyz="0.0" ixz="0.0"/>
-  </inertial>
-  <visual>
-    <geometry>
-      <sphere radius="0.015"/>
-    </geometry>
-    <material name="black"/>
-  </visual>
-  <collision>
-    <geometry>
-      <sphere radius="0.015"/>
+      <mesh filename="package://spiderbot_description/meshes/tibia_FL_1.stl" scale="0.001 0.001 0.001"/>
     </geometry>
   </collision>
 </link>
@@ -132,14 +122,14 @@
   <visual>
     <origin xyz="0.1202 0.10365 0.07235" rpy="0 0 0"/>
     <geometry>
-      <mesh filename="package://spider_bot_description/meshes/coxa_FR_1.stl" scale="0.001 0.001 0.001"/>
+      <mesh filename="package://spiderbot_description/meshes/coxa_FR_1.stl" scale="0.001 0.001 0.001"/>
     </geometry>
-    <material name="silver"/>
+    <material name="front_green"/>
   </visual>
   <collision>
     <origin xyz="0.1202 0.10365 0.07235" rpy="0 0 0"/>
     <geometry>
-      <mesh filename="package://spider_bot_description/meshes/coxa_FR_1.stl" scale="0.001 0.001 0.001"/>
+      <mesh filename="package://spiderbot_description/meshes/coxa_FR_1.stl" scale="0.001 0.001 0.001"/>
     </geometry>
   </collision>
 </link>
@@ -153,14 +143,14 @@
   <visual>
     <origin xyz="0.136181 0.158946 0.08945" rpy="0 0 0"/>
     <geometry>
-      <mesh filename="package://spider_bot_description/meshes/femur_FR_1.stl" scale="0.001 0.001 0.001"/>
+      <mesh filename="package://spiderbot_description/meshes/femur_FR_1.stl" scale="0.001 0.001 0.001"/>
     </geometry>
-    <material name="silver"/>
+    <material name="front_green"/>
   </visual>
   <collision>
     <origin xyz="0.136181 0.158946 0.08945" rpy="0 0 0"/>
     <geometry>
-      <mesh filename="package://spider_bot_description/meshes/femur_FR_1.stl" scale="0.001 0.001 0.001"/>
+      <mesh filename="package://spiderbot_description/meshes/femur_FR_1.stl" scale="0.001 0.001 0.001"/>
     </geometry>
   </collision>
 </link>
@@ -174,32 +164,14 @@
   <visual>
     <origin xyz="0.191688 0.216575 0.08945" rpy="0 0 0"/>
     <geometry>
-      <mesh filename="package://spider_bot_description/meshes/tibia_FR_1.stl" scale="0.001 0.001 0.001"/>
+      <mesh filename="package://spiderbot_description/meshes/tibia_FR_1.stl" scale="0.001 0.001 0.001"/>
     </geometry>
-    <material name="silver"/>
+    <material name="front_green"/>
   </visual>
   <collision>
     <origin xyz="0.191688 0.216575 0.08945" rpy="0 0 0"/>
     <geometry>
-      <mesh filename="package://spider_bot_description/meshes/tibia_FR_1.stl" scale="0.001 0.001 0.001"/>
-    </geometry>
-  </collision>
-</link>
-
-<link name="fr_foot_link">
-  <inertial>
-    <mass value="0.01"/>
-    <inertia ixx="0.00001" iyy="0.00001" izz="0.00001" ixy="0.0" iyz="0.0" ixz="0.0"/>
-  </inertial>
-  <visual>
-    <geometry>
-      <sphere radius="0.015"/>
-    </geometry>
-    <material name="black"/>
-  </visual>
-  <collision>
-    <geometry>
-      <sphere radius="0.015"/>
+      <mesh filename="package://spiderbot_description/meshes/tibia_FR_1.stl" scale="0.001 0.001 0.001"/>
     </geometry>
   </collision>
 </link>
@@ -216,14 +188,14 @@
   <visual>
     <origin xyz="-0.0802 -0.0649 0.0717" rpy="0 0 0"/>
     <geometry>
-      <mesh filename="package://spider_bot_description/meshes/coxa_RL_1.stl" scale="0.001 0.001 0.001"/>
+      <mesh filename="package://spiderbot_description/meshes/coxa_RL_1.stl" scale="0.001 0.001 0.001"/>
     </geometry>
-    <material name="silver"/>
+    <material name="rear_red"/>
   </visual>
   <collision>
     <origin xyz="-0.0802 -0.0649 0.0717" rpy="0 0 0"/>
     <geometry>
-      <mesh filename="package://spider_bot_description/meshes/coxa_RL_1.stl" scale="0.001 0.001 0.001"/>
+      <mesh filename="package://spiderbot_description/meshes/coxa_RL_1.stl" scale="0.001 0.001 0.001"/>
     </geometry>
   </collision>
 </link>
@@ -237,14 +209,14 @@
   <visual>
     <origin xyz="-0.096181 -0.120196 0.0888" rpy="0 0 0"/>
     <geometry>
-      <mesh filename="package://spider_bot_description/meshes/femur_RL_1.stl" scale="0.001 0.001 0.001"/>
+      <mesh filename="package://spiderbot_description/meshes/femur_RL_1.stl" scale="0.001 0.001 0.001"/>
     </geometry>
-    <material name="silver"/>
+    <material name="rear_red"/>
   </visual>
   <collision>
     <origin xyz="-0.096181 -0.120196 0.0888" rpy="0 0 0"/>
     <geometry>
-      <mesh filename="package://spider_bot_description/meshes/femur_RL_1.stl" scale="0.001 0.001 0.001"/>
+      <mesh filename="package://spiderbot_description/meshes/femur_RL_1.stl" scale="0.001 0.001 0.001"/>
     </geometry>
   </collision>
 </link>
@@ -258,32 +230,14 @@
   <visual>
     <origin xyz="-0.152749 -0.176764 0.0888" rpy="0 0 0"/>
     <geometry>
-      <mesh filename="package://spider_bot_description/meshes/tibia_RL_1.stl" scale="0.001 0.001 0.001"/>
+      <mesh filename="package://spiderbot_description/meshes/tibia_RL_1.stl" scale="0.001 0.001 0.001"/>
     </geometry>
-    <material name="silver"/>
+    <material name="rear_red"/>
   </visual>
   <collision>
     <origin xyz="-0.152749 -0.176764 0.0888" rpy="0 0 0"/>
     <geometry>
-      <mesh filename="package://spider_bot_description/meshes/tibia_RL_1.stl" scale="0.001 0.001 0.001"/>
-    </geometry>
-  </collision>
-</link>
-
-<link name="rl_foot_link">
-  <inertial>
-    <mass value="0.01"/>
-    <inertia ixx="0.00001" iyy="0.00001" izz="0.00001" ixy="0.0" iyz="0.0" ixz="0.0"/>
-  </inertial>
-  <visual>
-    <geometry>
-      <sphere radius="0.015"/>
-    </geometry>
-    <material name="black"/>
-  </visual>
-  <collision>
-    <geometry>
-      <sphere radius="0.015"/>
+      <mesh filename="package://spiderbot_description/meshes/tibia_RL_1.stl" scale="0.001 0.001 0.001"/>
     </geometry>
   </collision>
 </link>
@@ -300,14 +254,14 @@
   <visual>
     <origin xyz="0.1202 -0.0649 0.0717" rpy="0 0 0"/>
     <geometry>
-      <mesh filename="package://spider_bot_description/meshes/coxa_RR_1.stl" scale="0.001 0.001 0.001"/>
+      <mesh filename="package://spiderbot_description/meshes/coxa_RR_1.stl" scale="0.001 0.001 0.001"/>
     </geometry>
-    <material name="silver"/>
+    <material name="rear_red"/>
   </visual>
   <collision>
     <origin xyz="0.1202 -0.0649 0.0717" rpy="0 0 0"/>
     <geometry>
-      <mesh filename="package://spider_bot_description/meshes/coxa_RR_1.stl" scale="0.001 0.001 0.001"/>
+      <mesh filename="package://spiderbot_description/meshes/coxa_RR_1.stl" scale="0.001 0.001 0.001"/>
     </geometry>
   </collision>
 </link>
@@ -321,14 +275,14 @@
   <visual>
     <origin xyz="0.175496 -0.080881 0.0873" rpy="0 0 0"/>
     <geometry>
-      <mesh filename="package://spider_bot_description/meshes/femur_RR_1.stl" scale="0.001 0.001 0.001"/>
+      <mesh filename="package://spiderbot_description/meshes/femur_RR_1.stl" scale="0.001 0.001 0.001"/>
     </geometry>
-    <material name="silver"/>
+    <material name="rear_red"/>
   </visual>
   <collision>
     <origin xyz="0.175496 -0.080881 0.0873" rpy="0 0 0"/>
     <geometry>
-      <mesh filename="package://spider_bot_description/meshes/femur_RR_1.stl" scale="0.001 0.001 0.001"/>
+      <mesh filename="package://spiderbot_description/meshes/femur_RR_1.stl" scale="0.001 0.001 0.001"/>
     </geometry>
   </collision>
 </link>
@@ -342,32 +296,14 @@
   <visual>
     <origin xyz="0.232064 -0.137449 0.0873" rpy="0 0 0"/>
     <geometry>
-      <mesh filename="package://spider_bot_description/meshes/tibia_RR_1.stl" scale="0.001 0.001 0.001"/>
+      <mesh filename="package://spiderbot_description/meshes/tibia_RR_1.stl" scale="0.001 0.001 0.001"/>
     </geometry>
-    <material name="silver"/>
+    <material name="rear_red"/>
   </visual>
   <collision>
     <origin xyz="0.232064 -0.137449 0.0873" rpy="0 0 0"/>
     <geometry>
-      <mesh filename="package://spider_bot_description/meshes/tibia_RR_1.stl" scale="0.001 0.001 0.001"/>
-    </geometry>
-  </collision>
-</link>
-
-<link name="rr_foot_link">
-  <inertial>
-    <mass value="0.01"/>
-    <inertia ixx="0.00001" iyy="0.00001" izz="0.00001" ixy="0.0" iyz="0.0" ixz="0.0"/>
-  </inertial>
-  <visual>
-    <geometry>
-      <sphere radius="0.015"/>
-    </geometry>
-    <material name="black"/>
-  </visual>
-  <collision>
-    <geometry>
-      <sphere radius="0.015"/>
+      <mesh filename="package://spiderbot_description/meshes/tibia_RR_1.stl" scale="0.001 0.001 0.001"/>
     </geometry>
   </collision>
 </link>
@@ -402,11 +338,6 @@
   <dynamics damping="0.1" friction="0.1"/>
 </joint>
 
-<joint name="fl_foot_joint" type="fixed">
-  <origin xyz="-0.03 -0.05 -0.09" rpy="0 0 0"/>
-  <parent link="fl_tibia_link"/>
-  <child link="fl_foot_link"/>
-</joint>
 
 <!-- ============================================ -->
 <!-- JOINTS - FRONT RIGHT LEG -->
@@ -438,11 +369,6 @@
   <dynamics damping="0.1" friction="0.1"/>
 </joint>
 
-<joint name="fr_foot_joint" type="fixed">
-  <origin xyz="-0.05 0.03 -0.09" rpy="0 0 0"/>
-  <parent link="fr_tibia_link"/>
-  <child link="fr_foot_link"/>
-</joint>
 
 <!-- ============================================ -->
 <!-- JOINTS - REAR LEFT LEG -->
@@ -474,11 +400,6 @@
   <dynamics damping="0.1" friction="0.1"/>
 </joint>
 
-<joint name="rl_foot_joint" type="fixed">
-  <origin xyz="0.05 -0.03 -0.09" rpy="0 0 0"/>
-  <parent link="rl_tibia_link"/>
-  <child link="rl_foot_link"/>
-</joint>
 
 <!-- ============================================ -->
 <!-- JOINTS - REAR RIGHT LEG -->
@@ -510,11 +431,6 @@
   <dynamics damping="0.1" friction="0.1"/>
 </joint>
 
-<joint name="rr_foot_joint" type="fixed">
-  <origin xyz="0.03 0.05 -0.09" rpy="0 0 0"/>
-  <parent link="rr_tibia_link"/>
-  <child link="rr_foot_link"/>
-</joint>
 
 <!-- ============================================ -->
 <!-- ROS2_CONTROL CONFIGURATION -->
@@ -621,7 +537,7 @@
 <gazebo>
   <plugin filename="gz_ros2_control-system"
           name="gz_ros2_control::GazeboSimROS2ControlPlugin">
-    <parameters>$(find spider_bot_description)/config/controllers.yaml</parameters>
+    <parameters>$(find spiderbot_description)/config/controllers.yaml</parameters>
     <robot_param>robot_description</robot_param>
     <robot_param_node>robot_state_publisher</robot_param_node>
     <controller_manager_name>controller_manager</controller_manager_name>
@@ -664,14 +580,6 @@
     <selfCollide>false</selfCollide>
   </gazebo>
   
-  <gazebo reference="${leg_prefix}_foot_link">
-    <material>Gazebo/DarkGrey</material>
-    <mu1>1.0</mu1>
-    <mu2>1.0</mu2>
-    <kp>1000000.0</kp>
-    <kd>100.0</kd>
-    <minDepth>0.001</minDepth>
-  </gazebo>
 </xacro:macro>
 
 <!-- Apply to all legs -->
