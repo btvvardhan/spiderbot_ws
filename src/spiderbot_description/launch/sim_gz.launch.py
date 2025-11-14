@@ -11,7 +11,7 @@ from ament_index_python.packages import get_package_share_directory
 
 def generate_launch_description():
     pkg_share = get_package_share_directory('spiderbot_description')
-    xacro_file = os.path.join(pkg_share, 'urdf', 'spiderbot.urdf.xacro')
+    xacro_file = os.path.join(pkg_share, 'urdf', 'spidy.urdf')
     
     # Set Ignition Gazebo resource path for meshes
     pkg_share_parent = os.path.dirname(pkg_share)

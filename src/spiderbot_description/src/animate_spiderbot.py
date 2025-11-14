@@ -6,7 +6,7 @@ from rclpy.node import Node
 from sensor_msgs.msg import JointState
 
 PKG = 'spiderbot_description'
-URDF_FILE = 'spiderbot.urdf'
+URDF_FILE = 'spidy.urdf'
 
 def parse_joint_names(urdf_path):
     root = ET.parse(urdf_path).getroot()
