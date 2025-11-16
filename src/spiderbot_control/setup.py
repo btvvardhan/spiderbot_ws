@@ -28,6 +28,7 @@ setup(
             'cpgrl_controller = spiderbot_control.cpgrl_controller:main',
             'teleop_keyboard = spiderbot_control.teleop_keyboard:main',
             'serial_bridge_jointstate = spiderbot_control.serial_bridge_jointstate:main',
+            'test = spiderbot_control.test:main',
         ],
     },
 )
