@@ -32,25 +32,25 @@ except Exception:
 
 
 # ---------- JOINT ORDER (must match controllers.yaml "joints" order) ----------
-# Order: [FL hip, FL thigh, FL calf,  FR hip, FR thigh, FR calf,  RR hip, RR thigh, RR calf,  RL hip, RL thigh, RL calf]
+# Order: [FL coxa, FL femur, FL tibia,  RL coxa, RL femur, RL tibia,  RR coxa, RR femur, RR tibia,  FR coxa, FR femur, FR tibia]
 JOINT_ORDER = [
-    "Revolute 80",   # FL hip
-    "Revolute 91",   # FL thigh
-    "Revolute 105",  # FL calf
-    "Revolute 79",   # FR hip
-    "Revolute 92",   # FR thigh
-    "Revolute 102",  # FR calf
-    "Revolute 78",   # RR hip
-    "Revolute 93",   # RR thigh
-    "Revolute 103",  # RR calf
-    "Revolute 77",   # RL hip
-    "Revolute 90",   # RL thigh
-    "Revolute 104",  # RL calf
+    'fl_coxa_joint',   # Front Left
+    'fl_femur_joint',
+    'fl_tibia_joint',
+    'rl_coxa_joint',   # Rear Left
+    'rl_femur_joint',
+    'rl_tibia_joint',
+    'rr_coxa_joint',   # Rear Right
+    'rr_femur_joint',
+    'rr_tibia_joint',
+    'fr_coxa_joint',   # Front Right
+    'fr_femur_joint',
+    'fr_tibia_joint',
 ]
 
 # Neutral pose you verified in Gazebo (publishing these gave the perfect stance)
 DEFAULT_Q = np.array(
-    [0.6, 0.5, -0.2,   -0.6, 0.5, -0.2,    0.6, 0.5, -0.2,   -0.6, 0.5, -0.2],
+    [0.0, 0.0, 0.0,   0.0, 0.0, 0.0,    0.0, 0.0, 0.0,   0.0, 0.0, 0.0],
     dtype=np.float32
 )
 

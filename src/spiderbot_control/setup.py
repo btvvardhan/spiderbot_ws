@@ -29,6 +29,7 @@ setup(
             'teleop_keyboard = spiderbot_control.teleop_keyboard:main',
             'serial_bridge_jointstate = spiderbot_control.serial_bridge_jointstate:main',
             'test = spiderbot_control.test:main',
+            'ik_cpg_controller = spiderbot_control.ik_cpg_controller:main',
         ],
     },
 )
