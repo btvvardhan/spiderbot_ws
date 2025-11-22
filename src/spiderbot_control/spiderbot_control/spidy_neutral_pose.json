@@ -1,0 +1,41 @@
+{
+  "neutral_pose": {
+    "fl_coxa_joint": 0.0,
+    "fl_femur_joint": 0.0,
+    "fl_tibia_joint": 0.0,
+    "fr_coxa_joint": 0.0,
+    "fr_femur_joint": 0.0,
+    "fr_tibia_joint": 0.0,
+    "rl_coxa_joint": 0.0,
+    "rl_femur_joint": 0.0,
+    "rl_tibia_joint": 0.0,
+    "rr_coxa_joint": 0.0,
+    "rr_femur_joint": 0.0,
+    "rr_tibia_joint": 0.0
+  },
+  "base_links": [
+    "base_link"
+  ],
+  "leg_chains": [
+    [
+      "fl_coxa_joint",
+      "fl_femur_joint",
+      "fl_tibia_joint"
+    ],
+    [
+      "fr_coxa_joint",
+      "fr_femur_joint",
+      "fr_tibia_joint"
+    ],
+    [
+      "rl_coxa_joint",
+      "rl_femur_joint",
+      "rl_tibia_joint"
+    ],
+    [
+      "rr_coxa_joint",
+      "rr_femur_joint",
+      "rr_tibia_joint"
+    ]
+  ]
+}

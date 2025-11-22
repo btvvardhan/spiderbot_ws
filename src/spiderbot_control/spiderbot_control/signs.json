@@ -1,0 +1,7 @@
+{
+  "fl_coxa_joint": 1,  "fl_femur_joint": -1, "fl_tibia_joint": -1,
+  "fr_coxa_joint": 1,  "fr_femur_joint": -1, "fr_tibia_joint":  1,
+  "rl_coxa_joint": 1,  "rl_femur_joint": -1, "rl_tibia_joint":  1,
+  "rr_coxa_joint": 1,  "rr_femur_joint": -1, "rr_tibia_joint":  1
+}
+

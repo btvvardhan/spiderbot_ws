@@ -30,6 +30,8 @@ setup(
             'serial_bridge_jointstate = spiderbot_control.serial_bridge_jointstate:main',
             'test = spiderbot_control.test:main',
             'ik_cpg_controller = spiderbot_control.ik_cpg_controller:main',
+            "cpg_gait_node = spiderbot_control.cpg_gait_node:main",
+            "spidy_ik = spiderbot_control.spidy_ik:main",
         ],
     },
 )
