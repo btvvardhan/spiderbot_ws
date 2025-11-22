@@ -1,214 +1,145 @@
-
 #!/usr/bin/env python3
-# SPDX-License-Identifier: MIT
-"""
-spidy_ik.py
------------
-Minimal leg IK + URDF helpers for a quadruped "spiderbot" with 3-DoF legs:
-(hip_yaw, hip_pitch, knee).
-
-- Parses URDF to extract leg joint order, hip offsets, approximate link lengths.
-- Provides LegIK.solve(x,y,z) -> (q_yaw, q_hip, q_knee).
-
-Assumptions:
-- Hip yaw axis is vertical (z) in the hip frame.
-- Hip pitch and knee pitch rotate in the sagittal plane.
-- Link lengths are approximated from joint origins; override via config if needed.
-
-Usage:
-    from spidy_ik import RobotKinematics, LegIK
-    kin = RobotKinematics.from_urdf("/path/to/spidy.urdf")
-    q = kin.legs['LF'].ik.solve( x, y, z )
-
-"""
-
-from __future__ import annotations
-import math, json, xml.etree.ElementTree as ET
+import numpy as np
 from dataclasses import dataclass
-from typing import Dict, List, Tuple, Optional
-
-def _fltlist(s: Optional[str]) -> Optional[List[float]]:
-    if s is None:
-        return None
-    return [float(x) for x in s.strip().split()]
+from typing import Tuple, Optional
 
 @dataclass
-class JointInfo:
+class LegConfig:
     name: str
-    type: str
-    parent: str
-    child: str
-    origin_xyz: Tuple[float, float, float]
-    origin_rpy: Tuple[float, float, float]
-    axis: Optional[Tuple[float, float, float]]
-    lower: float
-    upper: float
+    coxa_origin: np.ndarray
+    coxa_axis: np.ndarray
+    femur_offset: np.ndarray
+    femur_axis: np.ndarray
+    tibia_offset: np.ndarray
+    tibia_axis: np.ndarray
+    coxa_length: float = 0.0553
+    femur_length: float = 0.08
+    tibia_length: float = 0.12
 
-@dataclass
-class LegInfo:
-    joints: List[JointInfo]           # [hip_yaw, hip_pitch, knee]
-    hip_offset_in_body: Tuple[float, float, float]
-    lengths: Tuple[float, float, float]   # (coxa, femur, tibia)
-    names: Tuple[str, str, str]       # joint names in IK order
+def _axis_basis(u: np.ndarray):
+    """Build an orthonormal basis aligned with the joint axis u.
+       e2 = u (axis), e1 ⟂ u (close to world X), e3 = e2 × e1.
+       The bending plane is span{e1, e3} (perpendicular to u).
+    """
+    e2 = np.asarray(u, dtype=float)
+    e2 /= (np.linalg.norm(e2) + 1e-12)
+    # choose helper not parallel to e2
+    helper = np.array([1.0, 0.0, 0.0]) if abs(e2[0]) < 0.9 else np.array([0.0, 1.0, 0.0])
+    e1 = helper - np.dot(helper, e2) * e2
+    e1 /= (np.linalg.norm(e1) + 1e-12)
+    e3 = np.cross(e2, e1)
+    return e1, e2, e3
 
-class RobotKinematics:
-    def __init__(self, legs: Dict[str, LegInfo], neutral_pose: Dict[str, float]):
-        self.legs = legs
-        self.neutral_pose = neutral_pose
+class SpiderIK:
+    def __init__(self):
+        self.legs = self._init_leg_configs()
 
-    @staticmethod
-    def from_urdf(urdf_path: str, neutral_path: Optional[str]=None) -> "RobotKinematics":
-        tree = ET.parse(urdf_path)
-        root = tree.getroot()
+    def _init_leg_configs(self) -> dict:
+        # Values pulled from your URDF
+        fl = LegConfig(
+            name="fl",
+            coxa_origin=np.array([0.0802, -0.1049, -0.0717]),
+            coxa_axis=np.array([0.0, 0.0, 1.0]),
+            femur_offset=np.array([0.055296, -0.015981, -0.0171]),
+            femur_axis=np.array([0.707107, 0.707107, 0.0]),
+            tibia_offset=np.array([0.056568, -0.056568, 0.0]),
+            tibia_axis=np.array([0.707107, 0.707107, 0.0]),
+        )
+        fr = LegConfig(
+            name="fr",
+            coxa_origin=np.array([-0.1202, -0.10365, -0.07235]),
+            coxa_axis=np.array([0.0, 0.0, 1.0]),
+            femur_offset=np.array([-0.015981, -0.055296, -0.0171]),
+            femur_axis=np.array([0.707107, -0.707107, 0.0]),
+            tibia_offset=np.array([-0.055507, -0.057629, 0.0]),
+            tibia_axis=np.array([0.707107, -0.707107, 0.0]),
+        )
+        rl = LegConfig(
+            name="rl",
+            coxa_origin=np.array([0.0802, 0.0649, -0.0717]),
+            coxa_axis=np.array([0.0, 0.0, 1.0]),
+            femur_offset=np.array([0.015981, 0.055296, -0.0171]),
+            femur_axis=np.array([-0.707107, 0.707107, 0.0]),
+            tibia_offset=np.array([0.056568, 0.056568, 0.0]),
+            tibia_axis=np.array([-0.707107, 0.707107, 0.0]),
+        )
+        rr = LegConfig(
+            name="rr",
+            coxa_origin=np.array([-0.1202, 0.0649, -0.0717]),
+            coxa_axis=np.array([0.0, 0.0, 1.0]),
+            femur_offset=np.array([-0.055296, 0.015981, -0.0156]),
+            femur_axis=np.array([-0.707107, -0.707107, 0.0]),
+            tibia_offset=np.array([-0.056568, 0.056568, 0.0]),
+            tibia_axis=np.array([-0.707107, -0.707107, 0.0]),
+        )
+        return {"fl": fl, "fr": fr, "rl": rl, "rr": rr}
 
-        # parse joints
-        joints = {}
-        children_of = {}
-        for j in root.findall('joint'):
-            jname = j.attrib.get('name')
-            jtype = j.attrib.get('type')
-            parent = j.find('parent').attrib['link']
-            child = j.find('child').attrib['link']
-            origin = j.find('origin')
-            xyz = _fltlist(origin.attrib.get('xyz')) if origin is not None else [0.0,0.0,0.0]
-            rpy = _fltlist(origin.attrib.get('rpy')) if origin is not None else [0.0,0.0,0.0]
-            axis_tag = j.find('axis')
-            axis = _fltlist(axis_tag.attrib.get('xyz')) if axis_tag is not None else None
-            limit = j.find('limit')
-            lower = float(limit.attrib.get('lower', 'nan')) if limit is not None and 'lower' in limit.attrib else float('nan')
-            upper = float(limit.attrib.get('upper', 'nan')) if limit is not None and 'upper' in limit.attrib else float('nan')
-            ji = JointInfo(jname, jtype, parent, child, tuple(xyz), tuple(rpy), tuple(axis) if axis else None, lower, upper)
-            joints[jname] = ji
-            children_of[parent] = children_of.get(parent, []) + [jname]
+    def solve_leg_ik(self, leg_name: str, target_pos: np.ndarray) -> Optional[Tuple[float, float, float]]:
+        leg = self.legs[leg_name]
 
-        # heuristic: identify 4 leg chains with 3 revolute/continuous joints
-        chains: List[List[str]] = []
-        # find base links
-        all_children_links = set(j.child for j in joints.values())
-        all_links = set(root.iterfind('link'))
-        base_candidates = []
-        for link_tag in root.findall('link'):
-            lname = link_tag.attrib['name']
-            if lname not in all_children_links:
-                base_candidates.append(lname)
-        base_link = base_candidates[0] if base_candidates else 'base_link'
+        # 1) Coxa yaw: rotate target into coxa frame
+        rel = target_pos - leg.coxa_origin
+        coxa_angle = np.arctan2(rel[1], rel[0])
+        c, s = np.cos(-coxa_angle), np.sin(-coxa_angle)
+        Rz = np.array([[c, -s, 0], [s, c, 0], [0, 0, 1]])
+        tgt_coxa = Rz @ rel
 
-        # BFS build chains
-        from collections import deque
-        dq = deque([(base_link, [])])
-        link_children = {}
-        for j in joints.values():
-            link_children.setdefault(j.parent, []).append(j)
-        link_to_children_links = {}
-        for j in joints.values():
-            link_to_children_links.setdefault(j.parent, []).append(j.child)
+        # 2) From femur joint
+        tgt_femur = tgt_coxa - leg.femur_offset
 
-        leaves = set(j.child for j in joints.values()) - set(j.parent for j in joints.values())
-        # gather path of joint names to leaves
-        def extend_paths(link, path):
-            if link not in link_children:
-                if path:
-                    chains.append(path)
-                return
-            for j in link_children[link]:
-                extend_paths(j.child, path+[j.name])
+        # 3) Build axis-aligned bending plane basis in coxa frame
+        e1, e2, e3 = _axis_basis(leg.femur_axis)  # e2 is femur/tibia axis (parallel for this leg)
 
-        extend_paths(base_link, [])
+        # 4) Project target into bending plane (e1-e3)
+        xp = np.dot(tgt_femur, e1)
+        zp = np.dot(tgt_femur, e3)
+        r = np.hypot(xp, zp)
 
-        def is_leg(chain: List[str]) -> bool:
-            types = [joints[j].type for j in chain]
-            ok = all(t in ('revolute','continuous','prismatic') for t in types) and (2 <= len(chain) <= 4)
-            end_link = joints[chain[-1]].child
-            hint = any(s in end_link.lower() for s in ['foot','toe','tip','tibia','ankle'])
-            return ok or hint
+        # 5) Reach clamp (handles donut hole + numerical edges)
+        L1, L2 = leg.femur_length, leg.tibia_length
+        eps = 1e-3
+        min_r = abs(L1 - L2) + eps
+        max_r = (L1 + L2) - eps
+        if r < min_r or r > max_r:
+            r_clamp = np.clip(r, min_r, max_r)
+            if r < 1e-9:
+                # push along +e1
+                xp, zp = r_clamp, 0.0
+            else:
+                scale = r_clamp / r
+                xp, zp = xp * scale, zp * scale
+            print(f"Info: Clamped {leg_name} target to reachable band (min={min_r:.3f}, max={max_r:.3f}); used r={r_clamp:.3f}")
+            r = r_clamp
 
-        leg_chains = [c for c in chains if is_leg(c)]
-        # pick 4 longest chains if more appear
-        leg_chains = sorted(leg_chains, key=len, reverse=True)[:4]
+        # 6) 2-link planar IK in (e1,e3) plane
+        # tibia (exterior)
+        cos_t = (L1**2 + L2**2 - r**2) / (2 * L1 * L2)
+        cos_t = np.clip(cos_t, -1.0, 1.0)
+        tibia_angle = np.pi - np.arccos(cos_t)
 
-        # Attempt to label legs LF, RF, LH, RH by hip offsets (x forward, y left)
-        def joint_origin(jn): return joints[jn].origin_xyz
-        def hip_of(chain): return joints[chain[0]].origin_xyz
-        hips = [hip_of(c) for c in leg_chains]
-        # sort by y then -x to group left/right and front/back
-        idxs = list(range(len(leg_chains)))
-        idxs.sort(key=lambda i: (-hips[i][1], -hips[i][0]))  # left first (y>0), within each, front first (x>0)
-        labels = ['LF','LH','RF','RH'] if len(idxs)==4 else [f"L{i}" for i in range(len(idxs))]
-        labeled = {}
-        for label, i in zip(labels, idxs):
-            chain = leg_chains[i]
-            # compute lengths: norm of origins for first 3 joints as (coxa,femur,tibia) approx
-            def norm(v): return (v[0]**2+v[1]**2+v[2]**2)**0.5
-            lens = []
-            for jn in chain[:3]:
-                lens.append(norm(joints[jn].origin_xyz))
-            if len(lens)<3:
-                lens += [0.05]*(3-len(lens))
-            ji = [joints[jn] for jn in chain[:3]]
-            hip_off = joints[chain[0]].origin_xyz
-            labeled[label] = LegInfo(
-                joints=ji,
-                hip_offset_in_body=tuple(hip_off),
-                lengths=tuple(lens[:3]),
-                names=tuple(j.name for j in ji)
-            )
+        # femur
+        cos_f = (L1**2 + r**2 - L2**2) / (2 * L1 * r)
+        cos_f = np.clip(cos_f, -1.0, 1.0)
+        angle_to_tgt = np.arctan2(zp, xp)   # angle in bending plane from +e1 toward +e3
+        femur_angle = angle_to_tgt - np.arccos(cos_f)
 
-        neutral = {}
-        if neutral_path:
-            try:
-                with open(neutral_path,'r') as f:
-                    neutral = json.load(f).get('neutral_pose', {})
-            except Exception:
-                pass
+        # Done: angles are about the correct axes in the coxa frame
+        return (coxa_angle, femur_angle, tibia_angle)
 
-        return RobotKinematics(labeled, neutral)
-
-class LegIK:
-    """Planar 2-link + yaw decomposition IK with joint limits and simple clamping."""
-    def __init__(self, coxa: float, femur: float, tibia: float,
-                 q_limits: Tuple[Tuple[float,float], Tuple[float,float], Tuple[float,float]]):
-        self.coxa = max(1e-6, float(coxa))
-        self.femur = max(1e-6, float(femur))
-        self.tibia = max(1e-6, float(tibia))
-        self.lims = q_limits
-
-    def clamp(self, i, q):
-        lo, hi = self.lims[i]
-        if math.isnan(lo) or math.isnan(hi):
-            return q
-        return max(lo, min(hi, q))
-
-    def solve(self, x: float, y: float, z: float) -> Tuple[float,float,float]:
-        # yaw to align sagittal plane
-        q_yaw = math.atan2(y, x)
-        r = math.hypot(x, y)
-        # distance from hip pitch axis after coxa
-        xp = max(1e-6, r - self.coxa)
-        zp = z
-        # 2-link IK
-        L1, L2 = self.femur, self.tibia
-        D = (xp*xp + zp*zp - L1*L1 - L2*L2) / (2*L1*L2)
-        D = max(-1.0, min(1.0, D))
-        q_knee = math.acos(D) - math.pi  # knee "bend" negative convention; adjust as needed
-        phi = math.atan2(zp, xp)
-        psi = math.atan2(L2*math.sin(q_knee+math.pi), L1 + L2*math.cos(q_knee+math.pi))
-        q_hip = phi - psi
-
-        # clamp
-        q_yaw = self.clamp(0, q_yaw)
-        q_hip = self.clamp(1, q_hip)
-        q_knee = self.clamp(2, q_knee)
-        return (q_yaw, q_hip, q_knee)
-
-def build_robot_kinematics(urdf_path: str, neutral_path: Optional[str]=None) -> RobotKinematics:
-    kin = RobotKinematics.from_urdf(urdf_path, neutral_path)
-    # attach IK solvers with limits
-    for leg in kin.legs.values():
-        # extract limits
-        lims = []
-        for j in leg.joints:
-            lo = j.lower if not math.isnan(j.lower) else -1e9
-            hi = j.upper if not math.isnan(j.upper) else +1e9
-            lims.append((lo, hi))
-        leg.ik = LegIK(leg.lengths[0], leg.lengths[1], leg.lengths[2], tuple(lims))
-    return kin
+    def get_standing_pose(self, body_height: float = 0.10) -> dict:
+        default_feet = {
+            'fl': np.array([0.18, -0.18, -body_height]),
+            'fr': np.array([-0.18, -0.18, -body_height]),
+            'rl': np.array([0.18,  0.18, -body_height]),
+            'rr': np.array([-0.18,  0.18, -body_height]),
+        }
+        out = {}
+        for leg, p in default_feet.items():
+            ang = self.solve_leg_ik(leg, p)
+            if ang is None:
+                continue
+            c, f, t = ang
+            out[f"{leg}_coxa_joint"]  = c
+            out[f"{leg}_femur_joint"] = f
+            out[f"{leg}_tibia_joint"] = t
+        return out
