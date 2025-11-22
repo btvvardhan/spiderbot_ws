@@ -1,13 +1,15 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: MIT
 """
-cpg_gait_node.py (order-robust + IK fixes)
+cpg_gait_node.py (order-robust + IK lengths + x-bias + gait modes + adaptive knee sign)
 - Output joint order is taken from neutral_json["leg_chains"] if present (e.g., [fl, fr, rl, rr])
 - Canonical legs (LF, RF, RL, RR) are mapped by joint-name prefix (fl_/fr_/rl_/rr_), not hip offsets
 - signs.json can be either a 12-element list (legacy) or a dict {joint_name: sign}
 - IK segment lengths are taken from ik_dims.json if available (strongly recommended)
 - A per-leg neutral horizontal reach (x-bias) keeps r - coxa > 0 so the femur/tibia articulate
-- Signs are applied to IK deltas only; neutral_pose values are added afterward
+- Gait modes: crawl (4-beat), trot (diagonal coupling), pace (lateral), bound (front vs rear)
+- Uses one master oscillator to perfectly couple paired legs
+- Knee angle sign is adapted to URDF limits (if knee cannot go negative, use positive-flexion convention)
 - Publishes Float64MultiArray(12) to /position_controller/commands
 """
 
@@ -38,17 +40,24 @@ class JointInfo:
 class LegInfo:
     joints: List[JointInfo]                 # [hip_yaw, hip_pitch, knee]
     hip_offset_in_body: Tuple[float,float,float]
-    lengths: Tuple[float,float,float]       # (coxa,femur,tibia) *approx*; will be overridden by ik_dims if provided
+    lengths: Tuple[float,float,float]       # (coxa,femur,tibia) *approx*; overridden by ik_dims if provided
     names: Tuple[str,str,str]               # joint names in IK order
 
 class LegIK:
     def __init__(self, coxa, femur, tibia, qlims):
         self.coxa=max(1e-6,float(coxa)); self.femur=max(1e-6,float(femur)); self.tibia=max(1e-6,float(tibia))
-        self.lims=qlims
+        self.lims=qlims  # [(lo,hi),(lo,hi),(lo,hi)]
+        # Determine knee flexion sign from limits:
+        # If knee cannot go negative (lower >= 0), assume positive-flexion convention (0=straight, + = bend).
+        k_lo, k_hi = qlims[2]
+        self.knee_positive = (not math.isnan(k_lo)) and (k_lo >= -1e-6)
+
     def clamp(self,i,q):
         lo,hi=self.lims[i]
-        if math.isnan(lo) or math.isnan(hi): return q
-        return max(lo,min(hi,q))
+        if not math.isnan(lo): q = max(lo,q)
+        if not math.isnan(hi): q = min(hi,q)
+        return q
+
     def solve(self,x,y,z):
         # yaw to align sagittal plane
         q_yaw=math.atan2(y,x); r=math.hypot(x,y)
@@ -56,12 +65,29 @@ class LegIK:
         xp=max(1e-6,r-self.coxa); zp=z
         # 2-link IK in sagittal plane
         L1,L2=self.femur,self.tibia
-        D=(xp*xp+zp*zp-L1*L1-L2*L2)/(2*L1*L2); D=max(-1.0,min(1.0,D))
-        q_knee=math.acos(D)-math.pi  # elbow-down (negative bend)
-        phi=math.atan2(zp,xp)
-        psi=math.atan2(L2*math.sin(q_knee+math.pi), L1+L2*math.cos(q_knee+math.pi))
-        q_hip=phi-psi
-        return (self.clamp(0,q_yaw), self.clamp(1,q_hip), self.clamp(2,q_knee))
+        # internal knee angle theta in [0, pi], where 0=straight (R=L1+L2), pi=folded
+        # cos(theta) = (L1^2 + L2^2 - R^2)/(2 L1 L2)
+        R2 = xp*xp + zp*zp
+        cos_theta = (L1*L1 + L2*L2 - R2)/(2.0*L1*L2)
+        cos_theta = max(-1.0, min(1.0, cos_theta))
+        theta = math.acos(cos_theta)
+        # map to joint variable: either positive-flexion (0..pi) or negative-flexion (0..-pi)
+        q_knee = theta if self.knee_positive else -theta
+
+        # hip pitch using standard geometry (elbow-down)
+        # use the "elbow" angle at the knee for vector from hip to foot along femur
+        phi = math.atan2(zp, xp)
+        # angle between L1 vector and the line to foot
+        # For elbow-down, the angle at the elbow is (pi - theta)
+        elbow = math.pi - theta
+        psi = math.atan2(L2*math.sin(elbow), L1 + L2*math.cos(elbow))
+        q_hip = phi - psi
+
+        # clamp to URDF limits
+        q_yaw = self.clamp(0,q_yaw)
+        q_hip = self.clamp(1,q_hip)
+        q_knee = self.clamp(2,q_knee)
+        return (q_yaw, q_hip, q_knee)
 
 class RobotKinematics:
     def __init__(self, legs: Dict[str,LegInfo], neutral_pose: Dict[str,float]):
@@ -112,7 +138,7 @@ class RobotKinematics:
         labeled={}
         for label,i in zip(labels,idxs):
             chain=leg_chains[i]
-            # NOTE: lengths here are only rough placeholders; we override with ik_dims if provided
+            # NOTE: lengths here are only rough placeholders; overridden with ik_dims if provided
             def norm(v): return (v[0]**2+v[1]**2+v[2]**2)**0.5
             lens=[norm(joints[jn].origin_xyz) for jn in chain[:3]]
             while len(lens)<3: lens.append(0.05)
@@ -170,12 +196,11 @@ class CPGNode(Node):
     def __init__(self):
         super().__init__("cpg_gait_node")
 
-        # params
-
-        self.declare_parameter("urdf_path", "$HOME/spiderbot_ws/src/spiderbot_description/urdf/spidy.urdf")
-        self.declare_parameter("neutral_json", "$HOME/spiderbot_ws/src/spiderbot_control/spiderbot_control/spidy_neutral_pose.json")
-        self.declare_parameter("signs_json", "$HOME/spiderbot_ws/src/spiderbot_control/spiderbot_control/signs.json")
-        self.declare_parameter("ik_dims_json", "$HOME/spiderbot_ws/src/spiderbot_control/spiderbot_control/ik_dims.json")
+        # params (hardcoded defaults set to your workspace)
+        self.declare_parameter("urdf_path", "/home/teja/spiderbot_ws/src/spiderbot_description/urdf/spidy.urdf")
+        self.declare_parameter("neutral_json", "/home/teja/spiderbot_ws/src/spiderbot_control/spiderbot_control/spidy_neutral_pose.json")
+        self.declare_parameter("signs_json", "/home/teja/spiderbot_ws/src/spiderbot_control/spiderbot_control/signs.json")
+        self.declare_parameter("ik_dims_json", "/home/teja/spiderbot_ws/src/spiderbot_control/spiderbot_control/ik_dims.json")
         self.declare_parameter("out_topic","/position_controller/commands")
         self.declare_parameter("rate_hz",100.0)
         self.declare_parameter("duty",0.85)
@@ -188,8 +213,9 @@ class CPGNode(Node):
         self.declare_parameter("idle_deadband", 1e-3)
         self.declare_parameter("idle_timeout", 0.4)
         # neutral horizontal reach (x-bias) to keep xp = r - coxa > 0 (so femur/tibia articulate)
-        # If <=0, an automatic value is computed from ik_dims.
-        self.declare_parameter("stance_x_bias_m", 0.24)  # NEW
+        self.declare_parameter("stance_x_bias_m", 0.12)
+        # gait mode
+        self.declare_parameter("gait_mode", "crawl")  # crawl | trot | pace | bound
 
         urdf_path=self.get_parameter("urdf_path").get_parameter_value().string_value
         neutral_path=self.get_parameter("neutral_json").get_parameter_value().string_value
@@ -224,11 +250,6 @@ class CPGNode(Node):
         alias=_resolve_leg_aliases(available)
         alias.update(_alias_by_joint_prefix(self.kin.legs))  # name-based mapping wins
         self.alias = alias  # store for later
-
-        # Crawl phases in CANONICAL names (keep 3 feet down):
-        # LF:0.00, RR:0.25, RF:0.50, RL:0.75
-        canonical_phase={'LF':0.00,'RR':0.25,'RF':0.50,'RL':0.75}
-        self.phi={ alias[k]:v for k,v in canonical_phase.items() if k in alias }
 
         # ---- Choose output order ----
         # Prefer neutral_json["leg_chains"] (e.g., [fl, fr, rl, rr]) to match controller.
@@ -274,16 +295,52 @@ class CPGNode(Node):
 
         # ---- Override IK link lengths from ik_dims.json (if present) ----
         self.x_bias_by_leg: Dict[str, float] = {}
+
+        def _solve_bias_for_leg(lbl, target_qh=-0.8, z0=None):
+            leg = self.kin.legs[lbl]
+            if z0 is None:
+                z0 = self.g.ground_z
+            # binary search on x so that qh ~ target_qh at (x,0,z0)
+            Lc, Lf, Lt = leg.ik.coxa, leg.ik.femur, leg.ik.tibia
+            # feasible x range: from just beyond coxa to near full reach
+            lo = Lc + 0.02
+            hi = min(Lc + Lf + Lt - 0.02, 0.40)
+            def hip_at(x):
+                qy,qh,qk = leg.ik.solve(x, 0.0, z0)
+                return qh
+            # If even at hi the hip is still too negative, return mid; likewise for lo
+            qh_lo = hip_at(lo); qh_hi = hip_at(hi)
+            if math.isnan(qh_lo) or math.isnan(qh_hi):
+                return max(0.05, 0.5*Lf + 0.6*Lt)
+            # If monotonic increasing w.r.t x, bsearch; otherwise fallback
+            increasing = qh_hi > qh_lo
+            if not increasing:
+                # try expand range a bit
+                hi = min(hi + 0.1, Lc + Lf + Lt - 0.01)
+                qh_hi = hip_at(hi)
+                increasing = qh_hi > qh_lo
+            if not increasing:
+                return max(0.05, 0.5*Lf + 0.6*Lt)
+            # bsearch for qh ~ target
+            for _ in range(40):
+                mid = 0.5*(lo+hi)
+                qh_mid = hip_at(mid)
+                if qh_mid < target_qh:
+                    lo = mid
+                else:
+                    hi = mid
+            return 0.5*(lo+hi)
+        
         try:
             if os.path.exists(ik_dims_path):
                 with open(ik_dims_path, "r") as f:
                     dims = json.load(f)
                 for can_key, dim_key in (('LF','fl'),('RF','fr'),('RL','rl'),('RR','rr')):
                     if can_key in alias and dim_key in dims:
-                        cfg = dims[dim_key]
-                        Lc = float(cfg.get('Lcoxa', 0.06))
-                        Lf = float(cfg.get('Lfemur', 0.08))
-                        Lt = float(cfg.get('Ltibia', 0.15))
+                        cfg_dim = dims[dim_key]
+                        Lc = float(cfg_dim.get('Lcoxa', 0.06))
+                        Lf = float(cfg_dim.get('Lfemur', 0.08))
+                        Lt = float(cfg_dim.get('Ltibia', 0.15))
                         lbl = alias[can_key]
                         # rebuild IK with proper lengths (preserve joint limits)
                         leg = self.kin.legs[lbl]
@@ -294,7 +351,6 @@ class CPGNode(Node):
                             lims.append((lo,hi))
                         leg.ik = LegIK(Lc, Lf, Lt, tuple(lims))
                         # default x-bias from link lengths: keep some flex at ground_z
-                        # pick a comfortable reach ~ 0.5*Lf + 0.6*Lt (empirical)
                         self.x_bias_by_leg[lbl] = max(0.05, 0.5*Lf + 0.6*Lt)
                 self.get_logger().info(f"Loaded IK link lengths from {ik_dims_path}")
         except Exception as e:
@@ -314,6 +370,23 @@ class CPGNode(Node):
                     Lf = float(self.kin.legs[lbl].lengths[1])
                     Lt = float(self.kin.legs[lbl].lengths[2])
                     self.x_bias_by_leg[lbl] = max(0.05, 0.5*Lf + 0.6*Lt)
+            # Auto-tune bias so femur isn't clamped: aim hip pitch near -0.8 rad at neutral height
+            for lbl in self.leg_labels:
+                try:
+                    xb = _solve_bias_for_leg(lbl, target_qh=-0.8, z0=self.g.ground_z)
+                    # clamp to a sane range
+                    xb = max(0.05, min(xb, 0.35))
+                    self.x_bias_by_leg[lbl] = xb
+                except Exception as _e:
+                    pass
+            self.get_logger().info("Per-leg x-bias (auto-tuned, m): " +
+                                   ", ".join(f"{lbl}:{self.x_bias_by_leg[lbl]:.3f}" for lbl in self.leg_labels))
+            for lbl in self.leg_labels:
+                if lbl not in self.x_bias_by_leg:
+                    # fallback guess
+                    Lf = float(self.kin.legs[lbl].lengths[1])
+                    Lt = float(self.kin.legs[lbl].lengths[2])
+                    self.x_bias_by_leg[lbl] = max(0.05, 0.5*Lf + 0.6*Lt)
             self.get_logger().info("Per-leg x-bias (m): " +
                                    ", ".join(f"{lbl}:{self.x_bias_by_leg[lbl]:.3f}" for lbl in self.leg_labels))
 
@@ -321,6 +394,22 @@ class CPGNode(Node):
         self.signs=self._load_signs(signs_path)
         # neutral offsets in same order as joint_names
         self.default_q=[self.kin.neutral_pose.get(jn,0.0) for jn in self.joint_names]
+
+        # ---- Gait phases: use a master oscillator + offsets per leg ----
+        gait_mode = self.get_parameter("gait_mode").get_parameter_value().string_value
+        if gait_mode == "trot":
+            canonical_phase = {'LF':0.00, 'RR':0.00, 'RF':0.50, 'RL':0.50}
+            self.g.duty = min(self.g.duty, 0.60)
+        elif gait_mode == "pace":
+            canonical_phase = {'LF':0.00, 'RF':0.00, 'RL':0.50, 'RR':0.50}
+            self.g.duty = min(self.g.duty, 0.60)
+        elif gait_mode == "bound":
+            canonical_phase = {'LF':0.00, 'RF':0.00, 'RL':0.50, 'RR':0.50}
+            self.g.duty = min(self.g.duty, 0.55)
+        else:  # crawl (4-beat)
+            canonical_phase = {'LF':0.00, 'RR':0.25, 'RF':0.50, 'RL':0.75}
+        self.phase_offset = { self.alias[k]: v for k, v in canonical_phase.items() if k in self.alias }
+        self.phase_t = 0.0  # master oscillator
 
         # I/O & state
         self.pub=self.create_publisher(Float64MultiArray, self.out_topic, 10)
@@ -333,6 +422,7 @@ class CPGNode(Node):
 
         self.get_logger().info("Joint order (index:name): "+", ".join(f"{i}:{n}" for i,n in enumerate(self.joint_names)))
         self.get_logger().info(f"Publishing Float64MultiArray({len(self.joint_names)}) to {self.out_topic} @ {1.0/self.dt:.1f} Hz")
+        self.get_logger().info(f"Gait mode: {gait_mode}, duty={self.g.duty:.2f}")
 
     # ----- robust signs loader -----
     def _load_signs(self, path: str) -> List[float]:
@@ -391,18 +481,20 @@ class CPGNode(Node):
         vx=float(self.cmd.linear.x); vy=float(self.cmd.linear.y); wz=float(self.cmd.angular.z)
         Sx=max(0.0,min(self.g.max_stride, abs(vx)*0.6)); Sy_base=vy*0.2
         freq=self.g.base_freq*max(0.2, min(1.5, abs(vx)/0.2 + 0.3))
-        k_yaw=0.3
 
         if holding and self._last_q is not None:
             msg=Float64MultiArray(); msg.data=list(self._last_q); self.pub.publish(msg)
             return
 
+        # advance master oscillator
+        self.phase_t = (self.phase_t + freq*self.dt) % 1.0
+
         q_all: List[float] = []
         for lbl in self.leg_labels:
-            # advance phase for this physical leg
-            self.phi[lbl]=(self.phi[lbl]+freq*self.dt)%1.0
+            # per-leg phase from master + offset
+            phi_leg = (self.phase_t + self.phase_offset.get(lbl, 0.0)) % 1.0
 
-            # Decide left/right from the first joint name (robust if labels ever drift)
+            # Decide left/right from the first joint name
             names = list(self.leg_joint_order[lbl])
             first = names[0].lower()
             is_left = first.startswith(('fl_','lf_','rl_','lh_'))
@@ -410,16 +502,16 @@ class CPGNode(Node):
             Sx_leg=Sx*side_scale; Sy_leg=Sy_base if is_left else -Sy_base
 
             # stance vs swing path around a *neutral horizontal reach bias*
-            if self.phi[lbl] < self.g.duty:
-                s=self.phi[lbl]/self.g.duty
+            if phi_leg < self.g.duty:
+                s=phi_leg/self.g.duty
                 px,py,pz=self.stance_point(s,Sx_leg,Sy_leg,self.g.ground_z)
             else:
-                s=(self.phi[lbl]-self.g.duty)/max(1e-3,(1.0-self.g.duty))
+                s=(phi_leg-self.g.duty)/max(1e-3,(1.0-self.g.duty))
                 px,py,pz=self.swing_point(s,Sx_leg,Sy_leg,self.g.ground_z,self.g.clearance)
 
             # ADD bias so r = hypot(x,y) exceeds coxa; otherwise xp ~ 0 and femur points down
             x_cmd = self.x_bias_by_leg.get(lbl, 0.10) + px
-            y_cmd = py  # no lateral bias by default; add here if your hardware needs it
+            y_cmd = py
 
             leg=self.kin.legs.get(lbl) or next(iter(self.kin.legs.values()))
             qy,qh,qk=leg.ik.solve(x_cmd, y_cmd, pz)
