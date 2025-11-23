@@ -19,14 +19,19 @@ char rxbuf[128];
 uint8_t rxidx = 0;
 
 // Convert angle (0-180) to PWM pulse
-int angleToPulse(int realAngle) {
+int angleToPulse(int realAngle, int servo_index) {
+  // Invert angle for pins 2 and 5 on both servo controllers
+  if (servo_index == 2 || servo_index == 5 || servo_index == 8 || servo_index == 11) {
+    realAngle = 180 - realAngle;
+  }
   // Map with calibration offset
   int commandedAngle = map(realAngle, 0, 180, -5, 175);
   return map(commandedAngle, 0, 180, SERVOMIN, SERVOMAX);
 }
 
 // Write to specific servo channel
-void writeServoChannel(int servo_index, int pulse) {
+void writeServoChannel(int servo_index, int angle) {
+  int pulse = angleToPulse(angle, servo_index);
   if (servo_index < PER_BOARD) {
     pca1.setPWM(servo_index, 0, pulse);
   } else {
@@ -52,7 +57,7 @@ void setup() {
   // Initialize all servos to neutral (90 degrees)
   for (int i = 0; i < SERVOS_TOTAL; ++i) {
     currentAngles[i] = 90;
-    writeServoChannel(i, angleToPulse(90));
+    writeServoChannel(i, 90);
   }
   
   delay(200);
@@ -110,7 +115,7 @@ void loop() {
           // Apply to hardware IMMEDIATELY - no buffering
           for (int i = 0; i < SERVOS_TOTAL; ++i) {
             currentAngles[i] = vals[i];
-            writeServoChannel(i, angleToPulse(vals[i]));
+            writeServoChannel(i, vals[i]);
           }
         }
       }
