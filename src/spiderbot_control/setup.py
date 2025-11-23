@@ -25,11 +25,10 @@ setup(
     entry_points={
         'console_scripts': [
             # lets you do: ros2 run spiderbot_control cpgrl_controller
-            'cpgrl_controller = spiderbot_control.cpgrl_controller:main',
             'teleop_keyboard = spiderbot_control.teleop_keyboard:main',
             'serial_bridge_jointstate = spiderbot_control.serial_bridge_jointstate:main',
-            'test = spiderbot_control.test:main',
-            'ik_cpg_controller = spiderbot_control.ik_cpg_controller:main',
+            'policy_cpg_node = spiderbot_control.policy_cpg_node:main',
+            "cpg=spiderbot_control.cpg:main",
         ],
     },
 )
