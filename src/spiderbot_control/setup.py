@@ -29,6 +29,7 @@ setup(
             'serial_bridge_jointstate = spiderbot_control.serial_bridge_jointstate:main',
             'policy_cpg_node = spiderbot_control.policy_cpg_node:main',
             "cpg=spiderbot_control.cpg:main",
+            "diagnose_joint_mapping=spiderbot_control.diagnose_joint_mapping:main",
         ],
     },
 )

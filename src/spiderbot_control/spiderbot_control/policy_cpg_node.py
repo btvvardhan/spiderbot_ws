@@ -1,18 +1,12 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-COMPLETE Working ROS2 Policy Node - NO TODOs!
+Policy Node with Zero-Command Handling and Sign Corrections
 
-Matches training configuration exactly:
-- 37D observations: cmd(3) + hist(15) + phase(2) + prev_act(17)
-- 17D actions: freq(1) + amp(12) + phase(4)
-- HopfCPG with diagonal coupling
-- NO frame transformation
-
-Installation:
-1. Copy cpg_hopf.py to: spiderbot_control/cpg_hopf.py
-2. Copy this file to: spiderbot_control/policy_cpg_node.py
-3. Rebuild: colcon build --packages-select spiderbot_control
+New features:
+- Robot stands still when commands are zero
+- Optional per-joint sign corrections
+- Better diagnostic logging
 """
 
 import os
@@ -30,7 +24,6 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-# Import the HopfCPG
 from .cpg import SpiderCPG
 
 
@@ -54,7 +47,7 @@ class ActorMLP(nn.Module):
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         x = self.act(self.f1(x))
         x = self.act(self.f2(x))
-        return self.f3(x)  # Raw outputs (no tanh)
+        return self.f3(x)
 
 
 class ActorSeq(nn.Module):
@@ -62,11 +55,11 @@ class ActorSeq(nn.Module):
     def __init__(self, obs_dim: int, act_dim: int, hidden=(32, 32), activation="elu"):
         super().__init__()
         self.net = nn.Sequential(
-            nn.Linear(obs_dim, hidden[0]),      # 0
-            nn.Identity(),                      # 1 (placeholder for activation)
-            nn.Linear(hidden[0], hidden[1]),    # 2
-            nn.Identity(),                      # 3 (placeholder for activation)
-            nn.Linear(hidden[1], act_dim),      # 4
+            nn.Linear(obs_dim, hidden[0]),
+            nn.Identity(),
+            nn.Linear(hidden[0], hidden[1]),
+            nn.Identity(),
+            nn.Linear(hidden[1], act_dim),
         )
         self.act_fn = getattr(F, activation)
 
@@ -76,7 +69,7 @@ class ActorSeq(nn.Module):
         x = self.net[2](x)
         x = self.act_fn(x)
         x = self.net[4](x)
-        return x  # Raw outputs (no tanh)
+        return x
 
 
 class PolicyCPGNode(Node):
@@ -93,6 +86,23 @@ class PolicyCPGNode(Node):
         # Default joint positions (radians) - neutral stance
         self.declare_parameter("q0", [0.0] * 12)
         
+        # NEW: Per-joint sign corrections (if needed)
+        # Set to -1.0 for joints that need sign flip, 1.0 otherwise
+        #self.declare_parameter("joint_signs", [1.0] * 12)
+
+        self.declare_parameter("joint_signs", [
+            1.0, 1.0, 1.0,   # FL
+            -1.0,1.0,1.0,   # FR ← flipped
+            1.0, 1.0, 1.0,   # RL
+            -1.0,1.0,1.0    # RR ← flipped
+        ])
+        
+        # NEW: Zero command threshold
+        self.declare_parameter("cmd_zero_threshold", 0.01)  # m/s or rad/s
+        
+        # NEW: Enable/disable zero-command standstill
+        self.declare_parameter("standstill_on_zero_cmd", True)
+        
         # CRITICAL: Must match training exactly!
         self.H = 5       # Command history length
         self.obs_dim = 37  # Total observation dimension
@@ -104,26 +114,34 @@ class PolicyCPGNode(Node):
 
         # State buffers
         self.cmd_now = torch.zeros(1, 3)
-        self.cmd_hist = torch.zeros(1, self.H, 3)  # (1, 5, 3)
-        self.prev_actions = torch.zeros(1, self.act_dim)  # (1, 17)
+        self.cmd_hist = torch.zeros(1, self.H, 3)
+        self.prev_actions = torch.zeros(1, self.act_dim)
 
         # Load policy
         self.actor = self._load_actor()
         
-        # Initialize HopfCPG with diagonal coupling
+        # Initialize HopfCPG
         self.cpg = SpiderCPG(
             num_envs=1,
             dt=self.dt,
             device="cpu",
-            k_phase=0.7,  # Phase coupling strength
-            k_amp=1.0     # Amplitude coupling strength
+            k_phase=0.7,
+            k_amp=1.0
         )
         
-        # Default joint positions
+        # Default joint positions and sign corrections
         self.q0 = torch.tensor(
             self.get_parameter("q0").value,
             dtype=torch.float32
         ).view(1, 12)
+        
+        self.joint_signs = torch.tensor(
+            self.get_parameter("joint_signs").value,
+            dtype=torch.float32
+        ).view(1, 12)
+        
+        self.cmd_zero_threshold = float(self.get_parameter("cmd_zero_threshold").value)
+        self.standstill_enabled = bool(self.get_parameter("standstill_on_zero_cmd").value)
         
         # ROS I/O
         self.cmd_topic = self.get_parameter("cmd_topic").get_parameter_value().string_value
@@ -134,6 +152,9 @@ class PolicyCPGNode(Node):
         self.pub = self.create_publisher(JointState, self.joint_topic, 10)
         self.ctrl_pub = self.create_publisher(Float64MultiArray, self.ctrl_topic, 10)
         self.timer = self.create_timer(self.dt, self._tick)
+        
+        # Track if we're in standstill mode
+        self.is_standstill = False
 
         self.get_logger().info(
             f"✅ Policy+CPG node ready!\n"
@@ -141,9 +162,17 @@ class PolicyCPGNode(Node):
             f"  🎮 Action: 17D = freq(1) + amp(12) + phase(4)\n"
             f"  🔄 CPG: HopfCPG with diagonal coupling (k_phase=0.7, k_amp=1.0)\n"
             f"  🚫 NO frame transformation (direct body frame)\n"
+            f"  ⏸️  Standstill on zero cmd: {self.standstill_enabled}\n"
             f"  ⚡ Rate: {self.rate_hz}Hz\n"
             f"  📁 Policy: {self.get_parameter('policy_pt').value}"
         )
+        
+        # Log sign corrections if any are non-standard
+        if not torch.all(self.joint_signs == 1.0):
+            self.get_logger().info(
+                f"  ⚠️  Sign corrections applied:\n"
+                f"     {[f'{j}:{s:.0f}' for j, s in zip(DEFAULT_JOINT_ORDER, self.joint_signs.view(-1).tolist())]}"
+            )
 
     def _load_actor(self) -> nn.Module:
         """Load actor network from .pt file, handling both naming styles."""
@@ -161,7 +190,6 @@ class PolicyCPGNode(Node):
         has_named = any(k.startswith(("f1.", "f2.", "f3.")) for k in state_dict.keys())
         
         if has_named:
-            # Named style: f1, f2, f3
             self.get_logger().info("  Detected named parameter style (f1, f2, f3)")
             actor = ActorMLP(
                 obs_dim=37,
@@ -172,7 +200,6 @@ class PolicyCPGNode(Node):
             actor.load_state_dict(state_dict, strict=True)
             
         elif has_sequential:
-            # Sequential style: 0, 2, 4
             self.get_logger().info("  Detected Sequential parameter style (0, 2, 4)")
             actor = ActorSeq(
                 obs_dim=37,
@@ -180,7 +207,6 @@ class PolicyCPGNode(Node):
                 hidden=(32, 32),
                 activation="elu"
             ).eval()
-            # Add "net." prefix to match ActorSeq structure
             state_dict_prefixed = {f"net.{k}": v for k, v in state_dict.items()}
             actor.load_state_dict(state_dict_prefixed, strict=True)
             
@@ -195,41 +221,29 @@ class PolicyCPGNode(Node):
         return actor
 
     def _cmd_cb(self, msg: Twist):
-        """
-        Velocity command callback.
-        
-        NO TRANSFORMATION! Commands are direct body frame:
-        - cmd[0] = body X velocity (toward FL+RL side)
-        - cmd[1] = body Y velocity (toward RL+RR side)
-        - cmd[2] = yaw rate (CCW positive)
-        """
+        """Velocity command callback."""
         self.cmd_now[0, 0] = float(msg.linear.x)
         self.cmd_now[0, 1] = float(msg.linear.y)
         self.cmd_now[0, 2] = float(msg.angular.z)
 
+    def _is_zero_command(self) -> bool:
+        """Check if current command is effectively zero."""
+        cmd_magnitude = torch.sqrt(torch.sum(self.cmd_now ** 2)).item()
+        return cmd_magnitude < self.cmd_zero_threshold
+
     def _build_obs(self) -> torch.Tensor:
-        """
-        Build 37D observation vector matching training.
-        
-        Structure:
-        - commands [3]: current velocity command
-        - cmd_history [15]: 5 past commands flattened
-        - phase [2]: sin(φ), cos(φ) from CPG
-        - prev_actions [17]: last policy output
-        """
-        # Get CPG phase
-        cpg_phase = self.cpg.cpg.phase_angle()  # (1, 1)
+        """Build 37D observation vector matching training."""
+        cpg_phase = self.cpg.cpg.phase_angle()
         sin_phase = torch.sin(cpg_phase)
         cos_phase = torch.cos(cpg_phase)
         
-        # Concatenate all observations
         obs = torch.cat([
-            self.cmd_now,                      # [3]
-            self.cmd_hist.reshape(1, -1),     # [15] = 5*3
-            sin_phase,                        # [1]
-            cos_phase,                        # [1]
-            self.prev_actions,                # [17]
-        ], dim=-1)  # Total: 37
+            self.cmd_now,
+            self.cmd_hist.reshape(1, -1),
+            sin_phase,
+            cos_phase,
+            self.prev_actions,
+        ], dim=-1)
         
         assert obs.shape[1] == 37, f"❌ Expected 37D obs, got {obs.shape[1]}D!"
         return obs
@@ -237,26 +251,51 @@ class PolicyCPGNode(Node):
     def _tick(self):
         """Main control loop - runs at rate_hz."""
         
+        # Check if we should be in standstill mode
+        if self.standstill_enabled and self._is_zero_command():
+            if not self.is_standstill:
+                self.get_logger().info("⏸️  Zero command detected - entering standstill mode")
+                self.is_standstill = True
+            
+            # Send neutral pose (zero deltas from q0)
+            positions = [float(x) for x in self.q0.view(-1).tolist()]
+            
+            # Publish
+            msg = JointState()
+            msg.header.stamp = self.get_clock().now().to_msg()
+            msg.name = list(DEFAULT_JOINT_ORDER)
+            msg.position = positions
+            self.pub.publish(msg)
+            
+            ctrl_msg = Float64MultiArray()
+            ctrl_msg.data = positions
+            self.ctrl_pub.publish(ctrl_msg)
+            
+            # Don't update command history or CPG during standstill
+            return
+        
+        # Exiting standstill mode
+        if self.is_standstill:
+            self.get_logger().info("▶️  Non-zero command detected - resuming motion")
+            self.is_standstill = False
+        
+        # Normal operation: policy + CPG
         # 1) Build 37D observations
         obs = self._build_obs()
         
         # 2) Policy forward pass → 17D actions
         with torch.no_grad():
-            actions = self.actor(obs)  # (1, 17)
+            actions = self.actor(obs)
         
         # 3) Store for next observation
         self.prev_actions = actions.clone()
         
         # 4) Split actions into CPG parameters
-        freq_raw = actions[:, 0:1]      # (1, 1)
-        amp_raw = actions[:, 1:13]      # (1, 12)
-        phase_raw = actions[:, 13:17]   # (1, 4)
+        freq_raw = actions[:, 0:1]
+        amp_raw = actions[:, 1:13]
+        phase_raw = actions[:, 13:17]
         
-        # 5) Denormalize from policy output range [-inf, inf] to CPG ranges
-        # Policy outputs are unbounded, map to valid ranges:
-        # freq: [0.5, 3.0] Hz
-        # amp: [0.0, 0.6] rad
-        # phase: [-1.2, 1.2] rad
+        # 5) Denormalize to CPG ranges
         freq_hz = 0.5 + torch.sigmoid(freq_raw) * (3.0 - 0.5)
         amp_rad = 0.0 + torch.sigmoid(amp_raw) * (0.6 - 0.0)
         phase_rad = -1.2 + torch.sigmoid(phase_raw) * (1.2 - (-1.2))
@@ -268,25 +307,28 @@ class PolicyCPGNode(Node):
             leg_phase_offsets=phase_rad
         )
         
-        # 7) Add default pose to get absolute targets
-        q_targets = q_deltas + self.q0  # (1, 12)
+        # 7) Apply sign corrections
+        q_deltas = q_deltas * self.joint_signs
         
-        # 8) Convert to list for publishing
+        # 8) Add default pose to get absolute targets
+        q_targets = q_deltas + self.q0
+        
+        # 9) Convert to list for publishing
         positions = [float(x) for x in q_targets.view(-1).tolist()]
         
-        # 9) Publish JointState (for visualization/debugging)
+        # 10) Publish JointState
         msg = JointState()
         msg.header.stamp = self.get_clock().now().to_msg()
         msg.name = list(DEFAULT_JOINT_ORDER)
         msg.position = positions
         self.pub.publish(msg)
         
-        # 10) Publish to controller (for Gazebo/real robot)
+        # 11) Publish to controller
         ctrl_msg = Float64MultiArray()
         ctrl_msg.data = positions
         self.ctrl_pub.publish(ctrl_msg)
         
-        # 11) Roll command history (most recent at index 0)
+        # 12) Roll command history
         self.cmd_hist = torch.roll(self.cmd_hist, shifts=1, dims=1)
         self.cmd_hist[:, 0, :] = self.cmd_now
 
