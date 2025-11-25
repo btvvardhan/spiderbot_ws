@@ -260,7 +260,7 @@ class PolicyCPGNode(Node):
     def _remap_for_training(v: torch.Tensor) -> torch.Tensor:
         # training remap: vx'=-vy, vy'=-vx, wz'=wz
         vx, vy, wz = v[..., 0:1], v[..., 1:2], v[..., 2:3]
-        return torch.cat([vy, vx, wz], dim=-1)
+        return torch.cat([-vy, -vx, wz], dim=-1)
 
     # -------------------- ROS callbacks --------------------
     def _cmd_cb(self, msg: Twist):
