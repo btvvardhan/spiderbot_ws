@@ -50,6 +50,9 @@ class TeleopKeyboard(Node):
         self.vx = 0.0
         self.vy = 0.0
         self.wz = 0.0
+        
+        # Track which keys are pressed this frame
+        self.keys_pressed = set()
 
         self.get_logger().info(
             f"Keyboard teleop ready -> {self.cmd_topic} | "
@@ -101,6 +104,10 @@ class TeleopKeyboard(Node):
         self._draw_help(stdscr)
         while rclpy.ok():
             t0 = time.time()
+            
+            # Reset yaw to 0 each frame (non-persistent)
+            self.wz = 0.0
+            
             # Read all available keypresses this frame
             while True:
                 try:
