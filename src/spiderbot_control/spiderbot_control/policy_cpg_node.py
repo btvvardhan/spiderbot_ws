@@ -77,7 +77,7 @@ class PolicyCPGNode(Node):
         super().__init__("policy_cpg_node")
 
         # Parameters
-        self.declare_parameter("policy_pt", "/home/teja/spiderbot/export/policy.pt")
+        self.declare_parameter("policy_pt", "/home/teja/spiderbot_ws/src/spiderbot_control/models/policy.pt")
         self.declare_parameter("cmd_topic", "/cmd_vel")
         self.declare_parameter("joint_state_topic", "/joint_states")
         self.declare_parameter("controller_command_topic", "/position_controller/commands")
