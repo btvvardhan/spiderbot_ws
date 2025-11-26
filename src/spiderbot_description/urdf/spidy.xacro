@@ -438,8 +438,8 @@
 <!-- ============================================ -->
 <ros2_control name="SpiderHW" type="system">
   <hardware>
-    <!-- Gazebo (Ignition/Fortress/Garden) ros2_control backend -->
-    <plugin>gz_ros2_control/GazeboSimSystem</plugin>
+    <!-- Ignition Fortress ros2_control backend -->
+    <plugin>ign_ros2_control/IgnitionSystem</plugin>
   </hardware>
 
   <!-- Front Left Leg -->
@@ -535,8 +535,8 @@
 <!-- GAZEBO ROS2_CONTROL PLUGIN -->
 <!-- ============================================ -->
 <gazebo>
-  <plugin filename="gz_ros2_control-system"
-          name="gz_ros2_control::GazeboSimROS2ControlPlugin">
+  <plugin filename="ign_ros2_control-system"
+          name="ign_ros2_control::IgnitionROS2ControlPlugin">
     <parameters>$(find spiderbot_description)/config/controllers.yaml</parameters>
     <robot_param>robot_description</robot_param>
     <robot_param_node>robot_state_publisher</robot_param_node>

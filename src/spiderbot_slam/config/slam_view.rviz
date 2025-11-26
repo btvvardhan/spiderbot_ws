@@ -34,7 +34,7 @@ Visualization Manager:
         All Enabled: true
         
   Global Options:
-    Fixed Frame: map
+    Fixed Frame: odom
     
   Views:
     Current:
