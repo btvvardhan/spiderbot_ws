@@ -584,10 +584,10 @@
   <!-- ============================================ -->
   <gazebo reference="base_link">
     <sensor name="imu_sensor" type="imu">
-      <always_on>true</always_on>
-      <update_rate>100</update_rate>
       <topic>imu</topic>
-      <gz_frame_id>base_link</gz_frame_id>
+      <update_rate>100</update_rate>
+      <always_on>1</always_on>
+      <visualize>false</visualize>
     </sensor>
   </gazebo>
   <!-- ============================================ -->
@@ -624,6 +624,8 @@
     <sensor name="lidar_sensor" type="gpu_lidar">
       <topic>scan</topic>
       <update_rate>10</update_rate>
+      <always_on>1</always_on>
+      <visualize>true</visualize>
       <lidar>
         <scan>
           <horizontal>
@@ -644,8 +646,14 @@
           <stddev>0.01</stddev>
         </noise>
       </lidar>
-      <always_on>true</always_on>
-      <visualize>true</visualize>
     </sensor>
+  </gazebo>
+  <!-- ============================================ -->
+  <!-- GAZEBO SENSORS SYSTEM (CRITICAL FOR IGNITION) -->
+  <!-- ============================================ -->
+  <gazebo>
+    <plugin filename="ignition-gazebo-sensors-system" name="ignition::gazebo::systems::Sensors">
+      <render_engine>ogre2</render_engine>
+    </plugin>
   </gazebo>
 </robot>
