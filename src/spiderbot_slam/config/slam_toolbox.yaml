@@ -1,11 +1,11 @@
 slam_toolbox:
   ros__parameters:
-    # Frame IDs
-    odom_frame: odom
-    map_frame: map
-    base_frame: base_link
-    scan_topic: /scan
+    # ... existing config ...
     
+    # Increase these to handle delayed TF:
+
+
+
     # Mode
     mode: mapping
     
@@ -18,19 +18,22 @@ slam_toolbox:
     ceres_loss_function: None
     
     # Map parameters
-    map_update_interval: 1.0
+    map_update_interval: 2.0
     resolution: 0.05
-    max_laser_range: 12.0
-    minimum_time_interval: 0.5
+    max_laser_range: 15.0
+    minimum_time_interval: 0.8
     transform_publish_period: 0.02
+    transform_timeout: 0.5  # ← ADD THIS LINE
+    tf_buffer_duration: 30.0  # ← ADD THIS LINE
+ 
     
     # Scan matching (tuned for legged robot)
     use_scan_matching: true
     use_scan_barycenter: true
     minimum_travel_distance: 0.2
     minimum_travel_heading: 0.2
-    scan_buffer_size: 10
-    scan_buffer_maximum_scan_distance: 10.0
+    scan_buffer_size: 20
+    scan_buffer_maximum_scan_distance: 15.0
     
     # Loop closure
     do_loop_closing: true

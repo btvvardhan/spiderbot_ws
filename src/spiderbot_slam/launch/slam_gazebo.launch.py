@@ -150,7 +150,26 @@ def generate_launch_description():
             )
         ]
     )
-    
+    ekf_node = Node(
+        package='robot_localization',
+        executable='ekf_node',
+        name='ekf_localization_node',
+        output='screen',
+        parameters=[
+            PathJoinSubstitution([slam_share, 'config', 'ekf_config.yaml']),
+            {'use_sim_time': True}
+        ]
+    )
+
+    # Simple static odometry (no drift!)
+    static_odom = Node(
+        package='tf2_ros',
+        executable='static_transform_publisher',
+        name='static_odom_publisher',
+        arguments=['0', '0', '0', '0', '0', '0', 'odom', 'base_link'],
+        parameters=[{'use_sim_time': True}]
+    )
+
     # SLAM Toolbox
     slam_node = TimerAction(
         period=12.0,
@@ -223,8 +242,10 @@ def generate_launch_description():
         spawn_robot,
         load_joint_state_broadcaster,
         load_position_controller,
+        static_odom,
         slam_node,
         policy_node,
         teleop_node,
         rviz_node,
+        
     ])
