@@ -596,7 +596,53 @@
     <topic>imu</topic>
     <update_rate>100</update_rate>
     <always_on>1</always_on>
-    <visualize>false</visualize>
+    <visualize>true</visualize>
+    <ignition_frame_id>base_link</ignition_frame_id>
+    <pose>0 0 0 0 0 0</pose>
+    <imu>
+      <angular_velocity>
+        <x>
+          <noise type="gaussian">
+            <mean>0.0</mean>
+            <stddev>2e-4</stddev>
+          </noise>
+        </x>
+        <y>
+          <noise type="gaussian">
+            <mean>0.0</mean>
+            <stddev>2e-4</stddev>
+          </noise>
+        </y>
+        <z>
+          <noise type="gaussian">
+            <mean>0.0</mean>
+            <stddev>2e-4</stddev>
+          </noise>
+        </z>
+      </angular_velocity>
+      <linear_acceleration>
+        <x>
+          <noise type="gaussian">
+            <mean>0.0</mean>
+            <stddev>1.7e-2</stddev>
+          </noise>
+        </x>
+        <y>
+          <noise type="gaussian">
+            <mean>0.0</mean>
+            <stddev>1.7e-2</stddev>
+          </noise>
+        </y>
+        <z>
+          <noise type="gaussian">
+            <mean>0.0</mean>
+            <stddev>1.7e-2</stddev>
+          </noise>
+        </z>
+      </linear_acceleration>
+    </imu>
+    <plugin filename="libignition-gazebo-imu-system.so"
+            name="ignition::gazebo::systems::Imu"/>
   </sensor>
 </gazebo>
 <!-- ============================================ -->
@@ -640,6 +686,7 @@
     <update_rate>10</update_rate>
     <always_on>1</always_on>
     <visualize>true</visualize>
+    <ignition_frame_id>laser_link</ignition_frame_id>
     <lidar>
       <scan>
         <horizontal>
@@ -672,4 +719,5 @@
     <render_engine>ogre2</render_engine>
   </plugin>
 </gazebo>
+
 </robot>
