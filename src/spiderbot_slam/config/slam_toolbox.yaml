@@ -1,15 +1,15 @@
 slam_toolbox:
   ros__parameters:
-    # ... existing config ...
+    # ====== CRITICAL: Frame Names ======
+    odom_frame: odom
+    map_frame: map
+    base_frame: base_link
+    scan_topic: /scan
     
-    # Increase these to handle delayed TF:
-
-
-
-    # Mode
+    # ====== Mode ======
     mode: mapping
     
-    # Plugin params
+    # ====== Plugin params ======
     solver_plugin: solver_plugins::CeresSolver
     ceres_linear_solver: SPARSE_NORMAL_CHOLESKY
     ceres_preconditioner: SCHUR_JACOBI
@@ -17,25 +17,26 @@ slam_toolbox:
     ceres_dogleg_type: TRADITIONAL_DOGLEG
     ceres_loss_function: None
     
-    # Map parameters
+    # ====== Map parameters ======
     map_update_interval: 2.0
     resolution: 0.05
-    max_laser_range: 15.0
-    minimum_time_interval: 0.8
+    max_laser_range: 8.0
+    minimum_time_interval: 0.5
     transform_publish_period: 0.02
-    transform_timeout: 0.5  # ← ADD THIS LINE
-    tf_buffer_duration: 30.0  # ← ADD THIS LINE
- 
+    transform_timeout: 0.5
+    tf_buffer_duration: 30.0
     
-    # Scan matching (tuned for legged robot)
+    # ====== Scan matching (tuned for legged robot) ======
     use_scan_matching: true
     use_scan_barycenter: true
-    minimum_travel_distance: 0.2
+    minimum_travel_distance: 0.15
     minimum_travel_heading: 0.2
     scan_buffer_size: 20
-    scan_buffer_maximum_scan_distance: 15.0
+    scan_buffer_maximum_scan_distance: 8.0
+    link_match_minimum_response_fine: 0.1
+    link_scan_maximum_distance: 1.5
     
-    # Loop closure
+    # ====== Loop closure ======
     do_loop_closing: true
     loop_search_maximum_distance: 3.0
     loop_match_minimum_chain_size: 10
@@ -43,10 +44,15 @@ slam_toolbox:
     loop_match_minimum_response_coarse: 0.35
     loop_match_minimum_response_fine: 0.45
     
-    # Correlation parameters
+    # ====== Correlation parameters ======
     correlation_search_space_dimension: 0.5
     correlation_search_space_resolution: 0.01
     correlation_search_space_smear_deviation: 0.1
     
-    # Debug
+    # ====== Debug ======
     debug_logging: false
+    throttle_scans: 1
+    
+    # ====== Additional tuning for stationary robot ======
+    max_laser_range: 8.0
+    minimum_time_interval: 0.5
