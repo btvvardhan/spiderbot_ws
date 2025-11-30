@@ -1,10 +1,14 @@
 #!/usr/bin/env python3
 """
-Complete SLAM Pipeline for Physical Robot
-- LiDAR: YDLidar X2  
-- IMU: MPU9250 (rotation tracking)
-- Camera: Logitech Brio
-- Minimal odometry: Integrates IMU yaw, SLAM handles position
+Complete SLAM Pipeline for Physical Robot (MAIN COMPUTER)
+- Subscribes to /scan from Pi's LiDAR
+- Subscribes to /imu from Pi's Arduino
+- Subscribes to /camera/image_raw/compressed from Pi's camera
+- Processes IMU data for odometry
+- Runs SLAM for mapping
+- Visualizes everything in RViz
+
+Location: ~/spiderbot_ws/src/spiderbot_slam/launch/slam_minimal.launch.py
 """
 
 import os
@@ -78,48 +82,10 @@ def generate_launch_description():
         ),
         
         # ============================================================
-        # 3. LOGITECH BRIO CAMERA
+        # 3. MINIMAL IMU ODOMETRY
         # ============================================================
-        Node(
-            package='usb_cam',
-            executable='usb_cam_node_exe',
-            name='usb_cam',
-            output='screen',
-            parameters=[{
-                'video_device': '/dev/video0',
-                'framerate': 30.0,
-                'image_width': 640,
-                'image_height': 480,
-                'pixel_format': 'mjpeg',  # MJPEG is more efficient than YUYV
-                'camera_frame_id': 'camera_link',
-                'io_method': 'mmap',
-            }],
-            remappings=[
-                ('image_raw', '/camera/image_raw'),
-            ]
-        ),
-        
-        # ============================================================
-        # 4. IMAGE COMPRESSION (for network efficiency)
-        # ============================================================
-        Node(
-            package='image_transport',
-            executable='republish',
-            name='image_compressor',
-            output='screen',
-            arguments=[
-                'raw',
-                'compressed',
-                '--ros-args',
-                '--remap', 'in:=/camera/image_raw',
-                '--remap', 'out/compressed:=/camera/image_raw/compressed',
-                '--param', 'compressed.jpeg_quality:=70'
-            ]
-        ),
-        
-        # ============================================================
-        # 5. MINIMAL IMU ODOMETRY
-        # ============================================================
+        # Subscribes to /imu from Pi
+        # Publishes odom→base_link TF with yaw from IMU
         Node(
             package='spiderbot_slam',
             executable='minimal_imu_odom.py',
@@ -129,8 +95,11 @@ def generate_launch_description():
         ),
         
         # ============================================================
-        # 6. SLAM TOOLBOX
+        # 4. SLAM TOOLBOX
         # ============================================================
+        # Subscribes to /scan from Pi
+        # Uses odom→base_link TF from minimal_imu_odom
+        # Publishes /map and map→odom TF
         Node(
             package='slam_toolbox',
             executable='async_slam_toolbox_node',
@@ -143,8 +112,9 @@ def generate_launch_description():
         ),
         
         # ============================================================
-        # 7. RVIZ VISUALIZATION
+        # 5. RVIZ VISUALIZATION
         # ============================================================
+        # Displays /map, /scan, /camera/image_raw/compressed from Pi
         Node(
             package='rviz2',
             executable='rviz2',
