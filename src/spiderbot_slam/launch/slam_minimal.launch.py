@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """
-Simplified SLAM Pipeline for Physical Robot
+Complete SLAM Pipeline for Physical Robot
 - LiDAR: YDLidar X2  
-- IMU: MPU9250 (only for rotation tracking)
+- IMU: MPU9250 (rotation tracking)
+- Camera: Logitech Brio
 - Minimal odometry: Integrates IMU yaw, SLAM handles position
 """
 
@@ -66,21 +67,69 @@ def generate_launch_description():
                       '--roll', '0', '--pitch', '0', '--yaw', '0']
         ),
         
+        # base_link → camera_link (Camera mounting - adjust x,y,z to match your robot)
+        Node(
+            package='tf2_ros',
+            executable='static_transform_publisher',
+            name='base_to_camera_tf',
+            arguments=['--frame-id', 'base_link', '--child-frame-id', 'camera_link',
+                      '--x', '0.1', '--y', '0', '--z', '0.15',  # Adjust these!
+                      '--roll', '0', '--pitch', '0', '--yaw', '0']
+        ),
+        
         # ============================================================
-        # 3. MINIMAL IMU ODOMETRY
+        # 3. LOGITECH BRIO CAMERA
         # ============================================================
-        # Integrates IMU yaw rate, publishes odom→base_link TF
-        # Position is (0,0) - SLAM handles position via scan matching
+        Node(
+            package='usb_cam',
+            executable='usb_cam_node_exe',
+            name='usb_cam',
+            output='screen',
+            parameters=[{
+                'video_device': '/dev/video0',
+                'framerate': 30.0,
+                'image_width': 640,
+                'image_height': 480,
+                'pixel_format': 'mjpeg',  # MJPEG is more efficient than YUYV
+                'camera_frame_id': 'camera_link',
+                'io_method': 'mmap',
+            }],
+            remappings=[
+                ('image_raw', '/camera/image_raw'),
+            ]
+        ),
+        
+        # ============================================================
+        # 4. IMAGE COMPRESSION (for network efficiency)
+        # ============================================================
+        Node(
+            package='image_transport',
+            executable='republish',
+            name='image_compressor',
+            output='screen',
+            arguments=[
+                'raw',
+                'compressed',
+                '--ros-args',
+                '--remap', 'in:=/camera/image_raw',
+                '--remap', 'out/compressed:=/camera/image_raw/compressed',
+                '--param', 'compressed.jpeg_quality:=70'
+            ]
+        ),
+        
+        # ============================================================
+        # 5. MINIMAL IMU ODOMETRY
+        # ============================================================
         Node(
             package='spiderbot_slam',
-            executable='minimal_imu_odom',
+            executable='minimal_imu_odom.py',
             name='minimal_imu_odom',
             output='screen',
             parameters=[{'use_sim_time': False}]
         ),
         
         # ============================================================
-        # 4. SLAM TOOLBOX
+        # 6. SLAM TOOLBOX
         # ============================================================
         Node(
             package='slam_toolbox',
@@ -94,7 +143,7 @@ def generate_launch_description():
         ),
         
         # ============================================================
-        # 5. RVIZ VISUALIZATION
+        # 7. RVIZ VISUALIZATION
         # ============================================================
         Node(
             package='rviz2',
