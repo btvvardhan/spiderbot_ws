@@ -51,6 +51,14 @@ def generate_launch_description():
         # 2. STATIC TRANSFORMS
         # ============================================================
         
+        Node(
+            package='tf2_ros',
+            executable='static_transform_publisher',
+            name='odom_to_base_link',
+            arguments=['0', '0', '0', '0', '0', '0', 'odom', 'base_link'],
+            output='screen'
+        ),
+
         # base_link → laser_frame (LiDAR mounting)
         Node(
             package='tf2_ros',
