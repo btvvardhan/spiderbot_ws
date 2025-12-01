@@ -30,6 +30,8 @@ class VLMScenePlannerNode(Node):
           * /vlm_cmd           : std_msgs/String (single key per msg)
     """
 
+
+
     def __init__(self):
         super().__init__("vlm_scene_planner_node")
 
