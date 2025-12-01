@@ -31,6 +31,8 @@ setup(
             "cpg=spiderbot_control.cpg:main",
             "diagnose_joint_mapping=spiderbot_control.diagnose_joint_mapping:main",
             'policy_omni_node = spiderbot_control.policy_omni_node:main',
+            "fk=spiderbot_control.fk:main",
+            "control=spiderbot_control.control:main",
         ],
     },
 )
