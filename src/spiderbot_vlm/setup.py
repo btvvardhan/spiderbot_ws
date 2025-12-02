@@ -1,4 +1,5 @@
 from setuptools import find_packages, setup
+from glob import glob
 
 package_name = 'spiderbot_vlm'
 
@@ -10,7 +11,12 @@ setup(
         ('share/ament_index/resource_index/packages',
             ['resource/' + package_name]),
         ('share/' + package_name, ['package.xml']),
+        ('share/' + package_name + '/launch', glob('launch/*.py')),
+        ('share/' + package_name + '/templates', glob('templates/*.html')),
     ],
+    package_data={
+        package_name: ['../templates/*.html'],
+    },
     install_requires=['setuptools'],
     zip_safe=True,
     maintainer='teja',
@@ -21,6 +27,7 @@ setup(
     entry_points={
         'console_scripts': [
             'vlm_scene_planner_node = spiderbot_vlm.vlm_scene_planner_node:main',
+            'vlm_dashboard_node = spiderbot_vlm.vlm_dashboard_node:main',
         ],
     },
 )

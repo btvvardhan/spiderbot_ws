@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🕷️ Spiderbot VLM Dashboard</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            font-size: 3em;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .header p {
+            font-size: 1.2em;
+            opacity: 0.9;
+        }
+
+        .dashboard {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .card {
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        }
+
+        .card-header {
+            font-size: 1.5em;
+            font-weight: bold;
+            margin-bottom: 15px;
+            color: #667eea;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        /* Video Feed */
+        .video-container {
+            position: relative;
+            width: 100%;
+            background: #000;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+
+        #video-feed {
+            width: 100%;
+            height: auto;
+            display: block;
+        }
+
+        .video-status {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: rgba(102, 126, 234, 0.9);
+            color: white;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 0.9em;
+            font-weight: bold;
+        }
+
+        .video-status.live::before {
+            content: '🔴 ';
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        /* Scene Description */
+        .description-box {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 15px;
+            min-height: 150px;
+            margin-top: 10px;
+            font-size: 1.1em;
+            line-height: 1.6;
+            color: #333;
+        }
+
+        .description-timestamp {
+            font-size: 0.85em;
+            color: #666;
+            margin-top: 10px;
+            font-style: italic;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 25px;
+            font-size: 1em;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
+        }
+
+        .btn:active {
+            transform: translateY(0);
+        }
+
+        /* Chat Interface */
+        .chat-container {
+            display: flex;
+            flex-direction: column;
+            height: 500px;
+        }
+
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 10px;
+            margin-bottom: 15px;
+        }
+
+        .message {
+            margin-bottom: 15px;
+            padding: 10px 15px;
+            border-radius: 10px;
+            max-width: 80%;
+            animation: slideIn 0.3s;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .message.user {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            margin-left: auto;
+            text-align: right;
+        }
+
+        .message.system {
+            background: #e9ecef;
+            color: #333;
+        }
+
+        .message.success {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .message.error {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .chat-input-container {
+            display: flex;
+            gap: 10px;
+        }
+
+        #chat-input {
+            flex: 1;
+            padding: 12px 20px;
+            border: 2px solid #e9ecef;
+            border-radius: 25px;
+            font-size: 1em;
+            outline: none;
+            transition: border-color 0.3s;
+        }
+
+        #chat-input:focus {
+            border-color: #667eea;
+        }
+
+        /* Quick Commands */
+        .quick-commands {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .quick-cmd {
+            background: #e9ecef;
+            color: #495057;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 15px;
+            font-size: 0.9em;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .quick-cmd:hover {
+            background: #667eea;
+            color: white;
+            transform: scale(1.05);
+        }
+
+        /* Status Bar */
+        .status-bar {
+            background: white;
+            border-radius: 15px;
+            padding: 15px 20px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.2);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .status-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-weight: 500;
+        }
+
+        .status-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #28a745;
+            animation: pulse 2s infinite;
+        }
+
+        @media (max-width: 1200px) {
+            .dashboard {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <h1>🕷️ Spiderbot VLM Dashboard</h1>
+            <p>Vision-Language Model Robot Control Interface</p>
+        </div>
+
+        <!-- Main Dashboard -->
+        <div class="dashboard">
+            <!-- Left Column: Video + Description -->
+            <div>
+                <!-- Video Feed Card -->
+                <div class="card">
+                    <div class="card-header">
+                        📷 Live Camera Feed
+                        <button class="btn" onclick="describeScene()" style="font-size: 0.9em; padding: 8px 20px;">
+                            Describe Scene
+                        </button>
+                    </div>
+                    <div class="video-container">
+                        <img id="video-feed" src="/video_feed" alt="Camera Feed">
+                        <div class="video-status live">LIVE</div>
+                    </div>
+                </div>
+
+                <!-- Scene Description Card -->
+                <div class="card" style="margin-top: 20px;">
+                    <div class="card-header">📝 Scene Description</div>
+                    <div class="description-box" id="description-text">
+                        No description yet. Click "Describe Scene" to start.
+                    </div>
+                    <div class="description-timestamp" id="description-time"></div>
+                </div>
+            </div>
+
+            <!-- Right Column: Chat Interface -->
+            <div class="card">
+                <div class="card-header">💬 Command Chat</div>
+                <div class="chat-container">
+                    <div class="chat-messages" id="chat-messages">
+                        <div class="message system">
+                            👋 Welcome! Send commands to control the robot.<br>
+                            Examples: "go to the table", "turn left", "describe what you see"
+                        </div>
+                    </div>
+                    <div class="chat-input-container">
+                        <input type="text" id="chat-input" placeholder="Type a command..." 
+                               onkeypress="if(event.key==='Enter') sendCommand()">
+                        <button class="btn" onclick="sendCommand()">Send</button>
+                    </div>
+                </div>
+
+                <!-- Quick Commands -->
+                <div class="quick-commands">
+                    <button class="quick-cmd" onclick="quickCommand('describe the scene')">📸 Describe</button>
+                    <button class="quick-cmd" onclick="quickCommand('move forward')">⬆️ Forward</button>
+                    <button class="quick-cmd" onclick="quickCommand('turn left')">↩️ Left</button>
+                    <button class="quick-cmd" onclick="quickCommand('turn right')">↪️ Right</button>
+                    <button class="quick-cmd" onclick="quickCommand('stop')">🛑 Stop</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Status Bar -->
+        <div class="status-bar">
+            <div class="status-item">
+                <div class="status-dot"></div>
+                <span>Robot Connected</span>
+            </div>
+            <div class="status-item">
+                <span id="status-text">Ready for commands</span>
+            </div>
+            <div class="status-item">
+                <span id="clock"></span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Auto-refresh description periodically
+        let lastDescriptionTime = 0;
+
+        function updateDescription() {
+            fetch('/get_description')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.timestamp > lastDescriptionTime) {
+                        document.getElementById('description-text').textContent = data.description;
+                        document.getElementById('description-time').textContent = 
+                            'Updated: ' + new Date().toLocaleTimeString();
+                        lastDescriptionTime = data.timestamp;
+                    }
+                })
+                .catch(err => console.error('Failed to fetch description:', err));
+        }
+
+        // Describe scene button
+        function describeScene() {
+            addMessage('Requesting scene description...', 'system');
+            fetch('/describe_scene', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'}
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        addMessage('✓ Description requested. Waiting for response...', 'success');
+                        setTimeout(updateDescription, 2000);  // Check for update after 2s
+                    } else {
+                        addMessage('✗ Failed to request description', 'error');
+                    }
+                });
+        }
+
+        // Send command
+        function sendCommand() {
+            const input = document.getElementById('chat-input');
+            const command = input.value.trim();
+            
+            if (!command) return;
+            
+            addMessage(command, 'user');
+            input.value = '';
+            
+            fetch('/send_command', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({command: command})
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        addMessage(`✓ Command sent: "${command}"`, 'success');
+                        document.getElementById('status-text').textContent = 
+                            `Executing: ${command}`;
+                        
+                        // Auto-update description if command involves describing
+                        if (command.toLowerCase().includes('describe')) {
+                            setTimeout(updateDescription, 2000);
+                        }
+                    } else {
+                        addMessage('✗ Failed to send command', 'error');
+                    }
+                })
+                .catch(err => {
+                    addMessage('✗ Connection error', 'error');
+                    console.error(err);
+                });
+        }
+
+        // Quick command buttons
+        function quickCommand(cmd) {
+            document.getElementById('chat-input').value = cmd;
+            sendCommand();
+        }
+
+        // Add message to chat
+        function addMessage(text, type = 'system') {
+            const messagesDiv = document.getElementById('chat-messages');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${type}`;
+            messageDiv.textContent = text;
+            messagesDiv.appendChild(messageDiv);
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        }
+
+        // Update clock
+        function updateClock() {
+            document.getElementById('clock').textContent = new Date().toLocaleTimeString();
+        }
+        setInterval(updateClock, 1000);
+        updateClock();
+
+        // Poll for description updates
+        setInterval(updateDescription, 3000);
+    </script>
+</body>
+</html>
