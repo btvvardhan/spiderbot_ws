@@ -742,25 +742,6 @@ ros2 run spiderbot_control fk
 # Try policy_cpg_node instead for forward-only
 ```
 
----
-
-## 🤝 Contributing
-
-Contributions welcome! Areas for improvement:
-
-- **Terrain adaptation**: Rough terrain, stairs
-- **Additional gaits**: Bound, gallop, crawl
-- **Vision-based navigation**: Obstacle avoidance
-- **Multi-robot coordination**: Swarm behaviors
-- **Hardware improvements**: Better IMU integration
-
----
-
-## 📞 Support
-
-**Issues:** Open an issue on GitHub
-**Email:** btvvardhan@gmail.com  
-**Institution:** Arizona State University - Robotics Engineering
 
 ---
 
