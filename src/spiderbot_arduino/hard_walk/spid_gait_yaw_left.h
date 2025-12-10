@@ -1,0 +1,47 @@
+  // Step 0 (reverse of yaw-right Step 7)
+  { { 145, 45, 35 },   // FL
+    {  90, 55, 45 },   // FR
+    {  35, 20, 35 },   // RL
+    {  90, 55, 45 } }, // RR
+
+  // Step 1 (reverse of yaw-right Step 6)
+  { {  90, 45, 35 },   // FL
+    {  90, 55, 45 },   // FR
+    {  90, 45, 35 },   // RL
+    {  90, 55, 45 } }, // RR
+
+  // Step 2 (reverse of yaw-right Step 5)
+  { {  90, 55, 45 },   // FL
+    {  90, 45, 35 },   // FR
+    {  90, 55, 45 },   // RL
+    {  90, 45, 35 } }, // RR
+
+  // Step 3 (reverse of yaw-right Step 4)
+  { {  90, 55, 45 },   // FL
+    {  35, 45, 35 },   // FR
+    {  90, 55, 45 },   // RL
+    { 145, 20, 35 } }, // RR
+
+  // Step 4 (reverse of yaw-right Step 3)
+  { {  90, 45, 35 },   // FL
+    {  35, 20, 35 },   // FR
+    {  90, 45, 35 },   // RL
+    { 145, 55, 45 } }, // RR
+
+  // Step 5 (reverse of yaw-right Step 2)
+  { {  90, 45, 35 },   // FL
+    {  90, 20, 35 },   // FR
+    {  35, 45, 35 },   // RL
+    { 145, 55, 45 } }, // RR
+
+  // Step 6 (reverse of yaw-right Step 1)
+  { {  90, 20, 35 },   // FL
+    {  90, 45, 35 },   // FR
+    {  35, 55, 45 },   // RL
+    { 145, 45, 35 } }, // RR
+
+  // Step 7 (reverse of yaw-right Step 0)
+  { { 145, 20, 35 },   // FL
+    {  90, 45, 35 },   // FR
+    {  35, 55, 45 },   // RL
+    {  90, 45, 35 } }  // RR
